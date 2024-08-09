@@ -1,0 +1,9 @@
+/* 设置 QMainWindow 的背景图片 */
+QMainWindow {
+    background-image: url(:/images/background.png);
+    background-position: center;
+}
+
+QMainWindow QLabel{
+    color:red;
+}

@@ -1,0 +1,12 @@
+{
+    "dev": {
+        "protocol": "ws",
+        "host": "localhost",
+        "port": 5000
+    },
+    "prod": {
+        "protocol": "wss",
+        "host": "api.chaosgomoku.fun",
+        "port": 5000
+    }
+}

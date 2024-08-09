@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>styles/solive.qss</file>
+        <file>images/background.png</file>
+    </qresource>
+</RCC>

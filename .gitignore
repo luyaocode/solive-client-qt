@@ -1,5 +1,7 @@
 .vs/
 cmake/
-include/
+include/libmediasoupclient/
+include/libwebrtc/
 lib/
 out/
+enc_temp_folder/

@@ -9,15 +9,25 @@ set(VERSION_PATCH 1)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if (MSVC)
+    add_compile_options(/utf-8)
+endif()
+if (MSVC)
+    # WebRTC采用的是/MT，mediasoupclient也需要采用/MT
+    #set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
+endif()
+
 # 设置 CMake 选项以使用默认的 C++ 标准库
 set(WEBRTC_USE_CUSTOM_LIBCXX OFF CACHE BOOL "Use custom libc++")
 set(WEBRTC_USE_CUSTOM_LIBCXX_FOR_HOST OFF CACHE BOOL "Use custom libc++ for host")
-# 定义宏以避免与 WebRTC 的信号槽机制冲突
+# 定义宏以避免与 WebRTC 的信号槽机制冲突，意味着不能使用signal(s)，slot(s)和emit，但是可以使用Q_SLOT和Q_SIGNAL
 add_definitions(-DQT_DEPRECATED_WARNINGS -DQT_NO_KEYWORDS)
 # 取消定义windows.h中的宏min和max，防止与limits.h中的min和max冲突
 add_definitions(-DNOMINMAX)
+add_definitions(-D_WINDOWS -DNDEBUG)
 
-#set path for QT
+#set path for third_party
 set(CMAKE_PREFIX_PATH
     "D:/devs/Qt/5.14.2/msvc2017_64"
     "D:/repos/vcpkg/installed/x64-windows/share"
@@ -31,47 +41,100 @@ set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/vcpkg_toolchain.cmake"
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Instruct CMake to run moc automatically when needed
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
 # Create code from a list of Qt designer ui files
 set(CMAKE_AUTOUIC ON)
 
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets Gui)
+find_package(Qt5 COMPONENTS Multimedia MultimediaWidgets REQUIRED)
 
 # 查找 nlohmann/json 包
 find_package(nlohmann_json CONFIG REQUIRED)
-
 find_package(absl CONFIG REQUIRED)
+# socket-io-client
+# 使用vcpkg安装无法指定静态多线程运行时库和_ITERATOR_DEBUG_LEVEL，采用CMake编译静态库就好了
+# find_package(sioclient CONFIG REQUIRED) 
+find_package(boost_log REQUIRED CONFIG)
 
 # 设置头文件路径
-set(HEADERS_FILE 
+set(INCLUDE_PATH ${CMAKE_SOURCE_DIR}/include/include)
+set(UI_PATH ${CMAKE_SOURCE_DIR}/ui)
+set(HEADERS_DIRECTORY 
+	${INCLUDE_PATH}
 	${CMAKE_SOURCE_DIR}/include/libmediasoupclient
 	${CMAKE_SOURCE_DIR}/include/libwebrtc
 	"D:/repos/vcpkg/installed/x64-windows/include/nlohmann")
 
-set(project_ui
-	MainWindow.ui)
+file(GLOB project_ui
+    "${CMAKE_SOURCE_DIR}/ui/*.ui"
+)
+# 设置UI文件的搜索路径
+set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_SOURCE_DIR}/ui)
 
-set(project_headers
-	MainWindow.h)
+file(GLOB project_headers
+    "${INCLUDE_PATH}/*.h"
+    "${INCLUDE_PATH}/*.hpp"
+)
 
-set(project_sources
-	main.cpp MainWindow.cpp)
+file(GLOB project_sources
+    "${CMAKE_SOURCE_DIR}/src/*.cpp"
+)
+
+file(GLOB qrc_files
+    "${CMAKE_SOURCE_DIR}/resources/*.qrc"
+)
+qt5_add_resources(QRC_FILES ${qrc_files})
+SOURCE_GROUP("Resource Files" FILES ${qrc_files})
+
+link_directories(${CMAKE_SOURCE_DIR}/lib)
+
 
 # 添加源文件
-add_executable(${PROJECT_NAME} ${project_headers} ${project_ui} ${project_sources})
+add_executable(${PROJECT_NAME} ${project_headers} ${project_sources} ${ui_headers} ${QRC_FILES})
 
 # 定义编译宏
-target_compile_definitions(${PROJECT_NAME} PRIVATE WEBRTC_WIN)
+target_compile_definitions(${PROJECT_NAME} PRIVATE WEBRTC_WIN
+	PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}"
+)
+
+if(${CMAKE_BUILD_TYPE} MATCHES Debug)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _ITERATOR_DEBUG_LEVEL=0)
+else()
+    # target_compile_definitions(${PROJECT_NAME} PRIVATE _ITERATOR_DEBUG_LEVEL=0)
+endif()
 
 # 添加头文件
 target_include_directories(${PROJECT_NAME} PRIVATE 
-	${HEADERS_FILE})
+	${HEADERS_DIRECTORY})
+
+# 包含自动生成目录
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/SoLive_autogen/include)
+
+# 三方库
+add_library(webrtc STATIC IMPORTED)
+set_target_properties(webrtc PROPERTIES
+  IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/lib/webrtc.lib")
+add_library(mediasoupclient STATIC IMPORTED)
+set_target_properties(mediasoupclient PROPERTIES
+  IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/lib/mediasoupclient.lib")
 
 # Use the widgets module from Qt 5
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC
 	Qt5::Core
 	Qt5::Gui
-	Qt5::Widgets)
+	Qt5::Widgets
+	Qt5::Multimedia
+	Qt5::MultimediaWidgets
+    mediasoupclient
+    webrtc
+    winmm
+    sioclient
+)
 # 链接 nlohmann/json 库
 target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(${PROJECT_NAME} PRIVATE absl::base absl::strings absl::optional)
+#target_link_libraries(${PROJECT_NAME} PRIVATE sioclient::sioclient sioclient::sioclient_tls)
+target_link_libraries(${PROJECT_NAME} PRIVATE Boost::log)
+
+
