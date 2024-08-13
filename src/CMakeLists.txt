@@ -25,11 +25,16 @@ set(WEBRTC_USE_CUSTOM_LIBCXX_FOR_HOST OFF CACHE BOOL "Use custom libc++ for host
 add_definitions(-DQT_DEPRECATED_WARNINGS -DQT_NO_KEYWORDS)
 # 取消定义windows.h中的宏min和max，防止与limits.h中的min和max冲突
 add_definitions(-DNOMINMAX)
-add_definitions(-D_WINDOWS -DNDEBUG)
+
+# 设置 Windows SDK 路径
+set(CMAKE_PREFIX_PATH "C:/Program Files (x86)/Windows Kits/10")
+set(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/10/Lib/10.0.22621.0/um/x64")
+#"C:/Program Files (x86)/Microsoft DirectX SDK (June 2010)/Lib/x64")
 
 #set path for third_party
 set(CMAKE_PREFIX_PATH
     "D:/devs/Qt/5.14.2/msvc2017_64"
+    "D:/repos/vcpkg/installed/x64-windows-static/share"
     "D:/repos/vcpkg/installed/x64-windows/share"
     CACHE STRING "Directories to search for packages")
 
@@ -45,17 +50,16 @@ set(CMAKE_AUTORCC ON)
 # Create code from a list of Qt designer ui files
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt5 REQUIRED COMPONENTS Core Widgets Gui)
+find_package(Qt5 REQUIRED COMPONENTS Core Widgets Gui Test)
 find_package(Qt5 COMPONENTS Multimedia MultimediaWidgets REQUIRED)
 
-# 查找 nlohmann/json 包
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(absl CONFIG REQUIRED)
+# vcpkg安装包
+#find_package(nlohmann_json REQUIRED CONFIG)
+find_package(absl REQUIRED CONFIG)
 # socket-io-client
 # 使用vcpkg安装无法指定静态多线程运行时库和_ITERATOR_DEBUG_LEVEL，采用CMake编译静态库就好了
-# find_package(sioclient CONFIG REQUIRED) 
-find_package(boost_log REQUIRED CONFIG)
-
+find_package(spdlog REQUIRED CONFIG)
+#find_package(fmt REQUIRED CONFIG)
 # 设置头文件路径
 set(INCLUDE_PATH ${CMAKE_SOURCE_DIR}/include/include)
 set(UI_PATH ${CMAKE_SOURCE_DIR}/ui)
@@ -63,7 +67,9 @@ set(HEADERS_DIRECTORY
 	${INCLUDE_PATH}
 	${CMAKE_SOURCE_DIR}/include/libmediasoupclient
 	${CMAKE_SOURCE_DIR}/include/libwebrtc
-	"D:/repos/vcpkg/installed/x64-windows/include/nlohmann")
+	${CMAKE_SOURCE_DIR}/include/json-3.11.2
+    ${CMAKE_SOURCE_DIR}/include/json-3.11.2/nlohmann
+    "D:/repos/vcpkg/installed/x64-windows-static/include")
 
 file(GLOB project_ui
     "${CMAKE_SOURCE_DIR}/ui/*.ui"
@@ -110,31 +116,37 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 # 包含自动生成目录
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/SoLive_autogen/include)
 
-# 三方库
-add_library(webrtc STATIC IMPORTED)
-set_target_properties(webrtc PROPERTIES
-  IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/lib/webrtc.lib")
-add_library(mediasoupclient STATIC IMPORTED)
-set_target_properties(mediasoupclient PROPERTIES
-  IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/lib/mediasoupclient.lib")
-
-# Use the widgets module from Qt 5
-target_link_libraries(${PROJECT_NAME}
-	PUBLIC
-	Qt5::Core
+set(QT_LIBS Qt5::Core
 	Qt5::Gui
 	Qt5::Widgets
 	Qt5::Multimedia
 	Qt5::MultimediaWidgets
+    Qt5::Test
+)
+set(WIN32_LIBS
+    iphlpapi
+    Ole32
+    Secur32
+    strmiids
+    quartz
+    mfuuid
+    msdmo
+    wmcodecdspuuid
+    winmm
+    dxguid
+    dmoguids
+)
+
+target_link_libraries(${PROJECT_NAME}
+	PUBLIC
+    ${QT_LIBS}
+    ${WIN32_LIBS}
     mediasoupclient
     webrtc
-    winmm
+    sdptransform
     sioclient
 )
-# 链接 nlohmann/json 库
-target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
+# vcpkg包
 target_link_libraries(${PROJECT_NAME} PRIVATE absl::base absl::strings absl::optional)
-#target_link_libraries(${PROJECT_NAME} PRIVATE sioclient::sioclient sioclient::sioclient_tls)
-target_link_libraries(${PROJECT_NAME} PRIVATE Boost::log)
-
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
 

@@ -3,7 +3,9 @@ QMainWindow {
     background-image: url(:/images/background.png);
     background-position: center;
 }
-
-QMainWindow QLabel{
+QMainWindow QLabel#label_2,#label_4{
+    color:white;
+}
+QMainWindow QLabel#conn_state_label,#online_num_label{
     color:red;
 }

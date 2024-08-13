@@ -29,6 +29,8 @@ namespace SoLive::Page
 		void setupConnection();
 	private Q_SLOTS:
 		void handleSwitchPage(Page page);
+		void handleEnterRoom(const QString& roomId);
+		void handleLeaveRoom(const QString& roomId);
 	};
 }
 #endif // MAINWINDOW_H

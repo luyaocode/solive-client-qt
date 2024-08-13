@@ -1,4 +1,5 @@
 ﻿// SocketClientDef.h
+// 此文件保存格式必须为UTF8-65001-带签名，否则中文字符显示乱码
 #ifndef SOCKETCLIENTDEF_H
 #define SOCKETCLIENTDEF_H
 

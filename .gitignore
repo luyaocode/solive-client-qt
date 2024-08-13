@@ -1,7 +1,7 @@
 .vs/
-cmake/
 include/libmediasoupclient/
 include/libwebrtc/
+include/json-3.11.2/
 lib/
 out/
-enc_temp_folder/
+logs/

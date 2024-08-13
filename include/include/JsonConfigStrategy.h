@@ -2,7 +2,7 @@
 #define JSON_CONFIG_STRATEGY_H
 
 #include "ConfigStrategy.h"
-#include <nlohmann/json.hpp>
+#include <json.hpp>
 
 namespace SoLive::Config
 {

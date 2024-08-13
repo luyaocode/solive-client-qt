@@ -117,6 +117,11 @@
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
+        <property name="styleSheet">
+         <string notr="true">QLabel{
+	color:white;
+}</string>
+        </property>
         <property name="text">
          <string>状态：</string>
         </property>
@@ -129,6 +134,11 @@
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">QLabel{
+	color:red;
+}</string>
         </property>
         <property name="text">
          <string>未连接</string>
@@ -159,6 +169,11 @@
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
+        <property name="styleSheet">
+         <string notr="true">QLabel{
+	color:white;
+}</string>
+        </property>
         <property name="text">
          <string>在线人数：</string>
         </property>
@@ -171,6 +186,11 @@
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">QLabel{
+	color:red;
+}</string>
         </property>
         <property name="text">
          <string>0</string>

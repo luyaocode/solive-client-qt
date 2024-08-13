@@ -1,6 +1,8 @@
 #include "SocketClient.h"
 #include <iostream>
 #include "ISocketClientObserver.h"
+#include "Logger.h"
+#include <string>
 
 namespace SoLive::ProtocolSocketClient
 {
@@ -13,6 +15,11 @@ namespace SoLive::ProtocolSocketClient
     {
         static SocketClient instance;
         return instance;
+    }
+
+    const std::string& SocketClient::socketId() const
+    {
+        return _client.get_sessionid();
     }
 
     void SocketClient::setStrategy(std::unique_ptr<ISocketStrategy> newStrategy)
@@ -31,6 +38,11 @@ namespace SoLive::ProtocolSocketClient
         {
             std::cerr << "Strategy not set!" << std::endl;
         }
+    }
+
+    void SocketClient::listen(const std::string& eName, const std::function<void(sio::event&)>& callback)
+    {
+        _client.socket()->on(eName, callback);
     }
 
     void SocketClient::notifyObservers(EventType eventType)
@@ -57,47 +69,48 @@ namespace SoLive::ProtocolSocketClient
         _client.set_open_listener([this]()
             {
                 setState(ConnectionState::Connected);
-                std::cout << "Connection opened!" << std::endl;
+                LOG(Info, "Connection opened!")
             });
 
         // 设置连接失败的监听器
         _client.set_fail_listener([this]()
             {
                 setState(ConnectionState::Disconnected);
-                std::cout << "Connection failed!" << std::endl;
+                LOG(Warning, "Connection failed!")
             });
 
         // 设置重连中的监听器
         _client.set_reconnecting_listener([this]()
             {
                 setState(ConnectionState::Reconnecting);
-                std::cout << "Reconnecting..." << std::endl;
+                LOG(Info, "Reconnecting...")
             });
 
         // 设置重连的监听器
         _client.set_reconnect_listener([this](unsigned attempts, unsigned delay)
             {
                 setState(ConnectionState::Reconnecting);
-                std::cout << "Reconnected after " << attempts << " attempts with delay " << delay << "ms" << std::endl;
+                auto strInfo = "Reconnected after " + std::to_string(attempts) + " attempts with delay " + std::to_string(delay) + "ms";
+                LOG(Info, strInfo)
             });
 
         // 设置连接关闭的监听器
         _client.set_close_listener([this](sio::client::close_reason const& reason)
             {
                 setState(ConnectionState::Disconnected);
-                std::cout << "Connection closed! Reason: " << reason << std::endl;
+                LOG(Info, "Connection closed! Reason: " + reason)
             });
 
         // 设置 Socket 打开的监听器
         _client.set_socket_open_listener([this](const std::string& nsp)
             {
-                std::cout << "Socket opened in namespace: " << nsp << std::endl;
+                LOG(Info, "Socket opened in namespace: " + nsp)
             });
 
         // 设置 Socket 关闭的监听器
         _client.set_socket_close_listener([this](const std::string& nsp)
             {
-                std::cout << "Socket closed in namespace: " << nsp << std::endl;
+                LOG(Info, "Socket closed in namespace: " + nsp)
             });
 
         // 监听当前在线人数
@@ -111,7 +124,7 @@ namespace SoLive::ProtocolSocketClient
                 }
                 else
                 {
-                    std::cout << "Unexpected message type." << std::endl;
+                    LOG(Warning, "Unexpected message type.")
                 }
             });
     }
@@ -150,6 +163,7 @@ namespace SoLive::ProtocolSocketClient
 
     void SocketClient::addObserver(const std::shared_ptr<ISocketClientObserver>& observer)
     {
+        std::unique_lock<std::mutex> lock(_mtx);
         auto it = std::find(_observers.begin(), _observers.end(), observer);
         if (it == _observers.end())
         {
@@ -159,6 +173,7 @@ namespace SoLive::ProtocolSocketClient
 
     void SocketClient::removeObserver(const std::shared_ptr<ISocketClientObserver>& observer)
     {
+        std::unique_lock<std::mutex> lock(_mtx);
         _observers.erase(
             std::remove(_observers.begin(), _observers.end(), observer),
             _observers.end()

@@ -1,12 +1,13 @@
 #include "HttpSocketStrategy.h"
 #include <iostream>
 #include <sio_client.h>
+#include "Logger.h"
 
 namespace SoLive::ProtocolSocketClient
 {
     void HttpSocketStrategy::connect(sio::client& client,const std::string& uri)
     {
-        std::cout << "Connecting to " << uri<< " using HTTP." << std::endl;
+        LOG(Info,"Connecting to " +uri+" using HTTP.")
         client.connect(uri);
     }
 

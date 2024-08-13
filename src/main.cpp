@@ -9,11 +9,20 @@
 #include "SocketClient.h"
 #include "HttpSocketStrategy.h"
 #include "ConfigFactory.h"
+#include "Logger.h"
 
+using SoLive::Logger::Logger;
 using SoLive::ProtocolSocketClient::SocketClient;
 using SoLive::ProtocolSocketClient::HttpSocketStrategy;
 using SoLive::Page::MainWindow;
 using SoLive::Config::ConfigFactory;
+
+bool isPingable(const std::string& host)
+{
+    std::string command = "ping -n 1 " + host;
+    int result = system(command.c_str());
+    return  result==0;
+}
 
 void applyStyleSheet(QApplication& app, const QString& filePath)
 {
@@ -38,13 +47,15 @@ void applyStyleSheet(QApplication& app, const QString& filePath)
 
 int main(int argc, char* argv[])
 {
+    // 初始化日志系统
+    Logger::getInstance().init();
+
 	QApplication app(argc, argv);
     // 加载样式文件
     applyStyleSheet(app, ":/styles/solive.qss");
-
-	MainWindow mainWindow;
-	mainWindow.show();
-	std::cout << "in func main" << std::endl;
+    // 加载主界面
+    MainWindow mainWindow;
+    mainWindow.show();
 
 	// 获取配置
     std::string uri;
@@ -64,7 +75,15 @@ int main(int argc, char* argv[])
 	socketClient.setStrategy(std::make_unique<HttpSocketStrategy>());
 	socketClient.connect(uri);
 
-
+    std::string host = "stun.l.google.com";
+    if (isPingable(host))
+    {
+        std::cout << host << " is reachable." << std::endl;
+    }
+    else
+    {
+        std::cout << host << " is not reachable." << std::endl;
+    }
 
 	return app.exec();
 }

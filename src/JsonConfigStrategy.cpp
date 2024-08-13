@@ -31,9 +31,9 @@ namespace SoLive::Config
     {
         if (_config.contains(environment))
         {
-            std::string protocol = _config[environment]["protocol"];
-            std::string host = _config[environment]["host"];
-            int port = _config[environment]["port"];
+            std::string protocol = _config[environment]["protocol"].get<std::string>();
+            std::string host = _config[environment]["host"].get<std::string>();
+            int port = _config[environment]["port"].get<int>();
 
             return protocol + "://" + host + ":" + std::to_string(port);
         }
