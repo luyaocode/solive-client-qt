@@ -37,6 +37,7 @@ namespace SoLive::LiveClient
     public:
         static LiveClient& getInstance();
         ~LiveClient();
+        void init();
         void setupDevice();
         friend void RecvTrpListener::closeRecvTransport(LiveClient& liveClient);
         void closeRecvTransport();
@@ -48,18 +49,21 @@ namespace SoLive::LiveClient
         void onRemoteVideoTrackReceived(webrtc::VideoTrackInterface* videoTrack);
         void onRemoteAudioTrackReceived(webrtc::AudioTrackInterface* audioTrack);
         void roomConnected(const QString& roomId);
+        void sigClearWidget();
 
     private:
         explicit LiveClient(QObject* parent = nullptr);
         LiveClient(const LiveClient&) = delete;
         LiveClient& operator=(const LiveClient&) = delete;
         void setListener();
+        void setupConnection();
     public Q_SLOTS:
         void showWarningMessageBox(const QString& roomId);
+        void handleEnterRoom(const QString& newRoom, const QString& oldRoom);
+        void handleLeaveRoom(const QString& roomId);
     private:
         std::mutex _mtx;
         std::condition_variable _cv;
-        rtc::scoped_refptr<webrtc::PeerConnectionInterface> _peerConnPtr;
         std::unique_ptr<mediasoupclient::Device> _devicePtr;
         std::unique_ptr<mediasoupclient::RecvTransport> _recvTransportPtr;
         std::vector<std::unique_ptr<mediasoupclient::Consumer>> _consumerVec;
@@ -67,6 +71,7 @@ namespace SoLive::LiveClient
         std::unique_ptr<ConsumerListener> _consumerListenerPtr;
         bool _bDeviceLoaded;
         bool _bRecvTrpCreated;
+        QString _oldRoom;
     };
 }
 #endif // LIVECLIENT_H

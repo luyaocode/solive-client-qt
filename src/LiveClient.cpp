@@ -1,17 +1,13 @@
-﻿#include "LiveClient.h"
-#include <QDebug>
-#include <QJsonObject>
-#include <string>
-#include <QMessageBox>
-#include <QApplication>
-#include <QSignalSpy>
-#include "nlohmann/json.hpp"
+﻿#include "stdafx.h"
+#include "LiveClient.h"
 #include "SocketClient.h"
 #include "LiveViewerPageDef.h"
-#include "Logger.h"
+#include "MessageManager.h"
 
 namespace SoLive::LiveClient
 {
+
+    /////////////////////////////// RecvTrpListener ////////////////////////////////
     std::future<void> RecvTrpListener::OnConnect(mediasoupclient::Transport* transport, const nlohmann::json& dtlsParameters)
     {
         std::promise<void> promise;
@@ -64,6 +60,8 @@ namespace SoLive::LiveClient
         liveClient.closeRecvTransport();
     }
 
+    /////////////////////////////// RecvTrpListener ////////////////////////////////
+
     void ConsumerListener::OnTransportClose(mediasoupclient::Consumer* consumer)
     {
         LOG(Info,"Transport closed.")
@@ -80,7 +78,6 @@ namespace SoLive::LiveClient
         : QObject(parent)
     {
         mediasoupclient::Initialize();
-        setupDevice();
         setListener();
     }
 
@@ -107,17 +104,31 @@ namespace SoLive::LiveClient
         }
     }
 
-    void LiveClient::setupDevice()
+    void LiveClient::init()
     {
         std::unique_lock<std::mutex> lock(_mtx);
+        for (auto& consumerPrt : _consumerVec)
+        {
+            if (!consumerPrt->IsClosed())
+            {
+                consumerPrt->Close();
+            }
+        }
+        _consumerVec.clear();
+        closeRecvTransport();
+        setupDevice();
+        _oldRoom.clear();
+        _cv.notify_all();
+    }
+
+    void LiveClient::setupDevice()
+    {
         _devicePtr = std::make_unique<mediasoupclient::Device>(mediasoupclient::Device());
         _bDeviceLoaded = true;
-        _cv.notify_all();
     }
 
     void LiveClient::closeRecvTransport()
     {
-        std::unique_lock<std::mutex> lock(_mtx);
         if (_bRecvTrpCreated)
         {
             _recvTransportPtr->Close();
@@ -162,6 +173,11 @@ namespace SoLive::LiveClient
         // 进入房间
         socketClient.listen(SoLive::Page::EVENT_ROOM_ENTERED, [&](sio::event& ev)
             {
+                if (!_oldRoom.isEmpty())
+                {
+                    sigClearWidget();
+                }
+                init();
                 auto jsonObj = std::make_unique<QJsonObject>();
                 (*jsonObj)["from"] = "qt_client";
                 socketClient.emit(SoLive::Page::EVENT_GET_RTP_CAPA,std::move(jsonObj));
@@ -303,5 +319,25 @@ namespace SoLive::LiveClient
     void LiveClient::showWarningMessageBox(const QString& roomId)
     {
         QMessageBox::warning(nullptr, "警告", "直播间 " + roomId + " 不存在");
+    }
+
+    void LiveClient::handleEnterRoom(const QString& newRoom, const QString& oldRoom)
+    {
+        _oldRoom = oldRoom;
+        auto& socketClient = SoLive::ProtocolSocketClient::SocketClient::getInstance();
+        auto jsonObj = std::make_unique<QJsonObject>();
+        (*jsonObj)["isLive"] = true;
+        (*jsonObj)["id"] = newRoom;
+        socketClient.emit(SoLive::Page::EVENT_ENTER_ROOM, std::move(jsonObj));
+    }
+
+    void LiveClient::handleLeaveRoom(const QString& roomId)
+    {
+        auto& socketClient = SoLive::ProtocolSocketClient::SocketClient::getInstance();
+        auto jsonObj = std::make_unique<QJsonObject>();
+        (*jsonObj)["from"] = "qt_client";
+        (*jsonObj)["id"] = QString::fromUtf8(socketClient.socketId().c_str());
+        socketClient.emit(SoLive::Page::EVENT_LEAVE_ROOM, std::move(jsonObj));
+        MSG_PUSH(std::string("已退出直播间 ") + roomId.toUtf8().constData())
     }
 }

@@ -1,27 +1,42 @@
-#include <QApplication>
-#include <iostream>
-#include <string>
-#include <QFile>
-#include <QTextStream>
-#include <QDebug>
+ï»¿#include "stdafx.h"
 #include "MainWindow.h"
-#include "libmediasoupclient/mediasoupclient.hpp"
 #include "SocketClient.h"
 #include "HttpSocketStrategy.h"
-#include "ConfigFactory.h"
-#include "Logger.h"
+#include "ConfigManager.h"
+#include "MediaManager.h"
 
 using SoLive::Logger::Logger;
 using SoLive::ProtocolSocketClient::SocketClient;
 using SoLive::ProtocolSocketClient::HttpSocketStrategy;
 using SoLive::Page::MainWindow;
-using SoLive::Config::ConfigFactory;
+using SoLive::Config::ConfigManager;
+using SoLive::Util::MediaManager;
 
 bool isPingable(const std::string& host)
 {
     std::string command = "ping -n 1 " + host;
     int result = system(command.c_str());
     return  result==0;
+}
+
+bool checkFFmpeg()
+{
+    const char* inputVideo = "D:/IDM/cartoon.mp4";
+    AVFormatContext* fmt_ctx = nullptr;
+    if (avformat_open_input(&fmt_ctx, inputVideo, nullptr, nullptr) == 0)
+    {
+        avformat_close_input(&fmt_ctx);
+    }
+    else
+    {
+        return false;
+    }
+    const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+    if (!codec)
+    {
+        throw std::runtime_error("Codec not found");
+    }
+    return true;
 }
 
 void applyStyleSheet(QApplication& app, const QString& filePath)
@@ -47,30 +62,50 @@ void applyStyleSheet(QApplication& app, const QString& filePath)
 
 int main(int argc, char* argv[])
 {
-    // ³õÊ¼»¯ÈÕÖ¾ÏµÍ³
+    // çŽ¯å¢ƒæ£€æµ‹
+    if (!checkFFmpeg())
+    {
+        return 1;
+    }
+    // åŠ è½½å…¨å±€é…ç½®
+    std::string configPath = std::string(PROJECT_ROOT_DIR) + "/config/" + "config.json";
+    auto& configManager = ConfigManager::instance();
+    configManager.loadConfig("json", configPath);
+
+    // åˆå§‹åŒ–æ—¥å¿—
     Logger::getInstance().init();
 
-	QApplication app(argc, argv);
-    // ¼ÓÔØÑùÊ½ÎÄ¼þ
+    // åŠ è½½æ ·å¼æ–‡ä»¶
+    QApplication app(argc, argv);
     applyStyleSheet(app, ":/styles/solive.qss");
-    // ¼ÓÔØÖ÷½çÃæ
+    QFontDatabase fontDatabase;
+    QStringList fontFamilies = fontDatabase.families();
+    if (fontFamilies.empty())
+    {
+        throw std::runtime_error("No fonts available on the system.");
+    }
+    QFont globalFont(fontFamilies[0], 12);
+    app.setFont(globalFont);
+
+    // åŠ è½½ä¸»ç•Œé¢
     MainWindow mainWindow;
     mainWindow.show();
 
-	// »ñÈ¡ÅäÖÃ
+    // åˆå§‹åŒ–åª’ä½“ç®¡ç†å™¨
+    MediaManager::instance().init();
+
+	// èŽ·å–é…ç½®
     std::string uri;
     try
     {
-        std::string configPath = std::string(PROJECT_ROOT_DIR) + "/config/" + "config.json";
-        auto configStrategy = ConfigFactory::createConfigStrategy("json", configPath);
-        uri = configStrategy->getUri("dev");
+        uri = configManager.getUri("dev");
     }
     catch (const std::exception& e)
     {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
-    // Á¬½Ó·þÎñÆ÷
+    // è¿žæŽ¥æœåŠ¡å™¨
 	auto& socketClient = SocketClient::getInstance();
 	socketClient.setStrategy(std::make_unique<HttpSocketStrategy>());
 	socketClient.connect(uri);

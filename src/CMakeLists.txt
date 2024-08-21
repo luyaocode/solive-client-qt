@@ -36,7 +36,8 @@ set(CMAKE_PREFIX_PATH
     "D:/devs/Qt/5.14.2/msvc2017_64"
     "D:/repos/vcpkg/installed/x64-windows-static/share"
     "D:/repos/vcpkg/installed/x64-windows/share"
-    CACHE STRING "Directories to search for packages")
+    CACHE STRING "Directories to search for packages"
+)
 
 # 设置CMake工具链文件
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/vcpkg_toolchain.cmake"
@@ -54,68 +55,83 @@ find_package(Qt5 REQUIRED COMPONENTS Core Widgets Gui Test)
 find_package(Qt5 COMPONENTS Multimedia MultimediaWidgets REQUIRED)
 
 # vcpkg安装包
-#find_package(nlohmann_json REQUIRED CONFIG)
 find_package(absl REQUIRED CONFIG)
-# socket-io-client
 # 使用vcpkg安装无法指定静态多线程运行时库和_ITERATOR_DEBUG_LEVEL，采用CMake编译静态库就好了
 find_package(spdlog REQUIRED CONFIG)
-#find_package(fmt REQUIRED CONFIG)
-# 设置头文件路径
-set(INCLUDE_PATH ${CMAKE_SOURCE_DIR}/include/include)
-set(UI_PATH ${CMAKE_SOURCE_DIR}/ui)
-set(HEADERS_DIRECTORY 
-	${INCLUDE_PATH}
-	${CMAKE_SOURCE_DIR}/include/libmediasoupclient
-	${CMAKE_SOURCE_DIR}/include/libwebrtc
-	${CMAKE_SOURCE_DIR}/include/json-3.11.2
-    ${CMAKE_SOURCE_DIR}/include/json-3.11.2/nlohmann
-    "D:/repos/vcpkg/installed/x64-windows-static/include")
 
-file(GLOB project_ui
-    "${CMAKE_SOURCE_DIR}/ui/*.ui"
+# 添加头文件
+set(INCLUDE_PATH ${CMAKE_SOURCE_DIR}/include/include)
+file(GLOB_RECURSE HEADERS_DIRECTORY LIST_DIRECTORIES true
+    "${INCLUDE_PATH}/*"
 )
+list(APPEND HEADERS_DIRECTORY
+    ${INCLUDE_PATH}
+    ${CMAKE_SOURCE_DIR}/include/libmediasoupclient
+    ${CMAKE_SOURCE_DIR}/include/libwebrtc
+    ${CMAKE_SOURCE_DIR}/include/json-3.11.2
+    ${CMAKE_SOURCE_DIR}/include/json-3.11.2/nlohmann
+    "D:/repos/vcpkg/installed/x64-windows/include"
+    "D:/repos/vcpkg/installed/x64-windows-static/include"
+)
+
 # 设置UI文件的搜索路径
 set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_SOURCE_DIR}/ui)
 
-file(GLOB project_headers
+# 生成目标
+file(GLOB_RECURSE project_headers
     "${INCLUDE_PATH}/*.h"
     "${INCLUDE_PATH}/*.hpp"
 )
 
-file(GLOB project_sources
+file(GLOB_RECURSE project_sources
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
 )
 
+    # 添加qrc文件
 file(GLOB qrc_files
     "${CMAKE_SOURCE_DIR}/resources/*.qrc"
 )
 qt5_add_resources(QRC_FILES ${qrc_files})
 SOURCE_GROUP("Resource Files" FILES ${qrc_files})
 
-link_directories(${CMAKE_SOURCE_DIR}/lib)
+add_executable(${PROJECT_NAME} 
+    ${project_headers} 
+    ${project_sources} 
+    ${ui_headers} 
+    ${QRC_FILES}
+)
 
-
-# 添加源文件
-add_executable(${PROJECT_NAME} ${project_headers} ${project_sources} ${ui_headers} ${QRC_FILES})
+# 包含头文件
+target_include_directories(${PROJECT_NAME} PRIVATE 
+    ${HEADERS_DIRECTORY}
+    ${CMAKE_CURRENT_BINARY_DIR}/SoLive_autogen/include
+    ${FFMPEG_INCLUDE_DIRS}
+)
 
 # 定义编译宏
-target_compile_definitions(${PROJECT_NAME} PRIVATE WEBRTC_WIN
+target_compile_definitions(${PROJECT_NAME} PRIVATE 
+    WEBRTC_WIN
 	PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}"
 )
 
+# 使用预编译头文件
+target_precompile_headers(${PROJECT_NAME} PRIVATE stdafx.h)
+
+# 定义调试级别
 if(${CMAKE_BUILD_TYPE} MATCHES Debug)
     target_compile_definitions(${PROJECT_NAME} PRIVATE _ITERATOR_DEBUG_LEVEL=0)
 else()
     # target_compile_definitions(${PROJECT_NAME} PRIVATE _ITERATOR_DEBUG_LEVEL=0)
 endif()
 
-# 添加头文件
-target_include_directories(${PROJECT_NAME} PRIVATE 
-	${HEADERS_DIRECTORY})
+# 设置库目录
+target_link_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/lib)
+set(FFMPEG_LIBRARY_DIRS "D:/repos/vcpkg/installed/x64-windows-static/lib")
+target_link_directories(${PROJECT_NAME} PRIVATE ${FFMPEG_LIBRARY_DIRS})
 
-# 包含自动生成目录
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/SoLive_autogen/include)
 
+# 链接三方库、win32
+set(FFMPEG_LIBRARIES avcodec avformat avutil swscale swresample avfilter avdevice libx264)
 set(QT_LIBS Qt5::Core
 	Qt5::Gui
 	Qt5::Widgets
@@ -135,18 +151,26 @@ set(WIN32_LIBS
     winmm
     dxguid
     dmoguids
+    ws2_32
+    bcrypt
+    mfplat
+    mf
+    mfreadwrite
 )
-
-target_link_libraries(${PROJECT_NAME}
-	PUBLIC
+# 查找库
+target_link_libraries(${PROJECT_NAME} PRIVATE
     ${QT_LIBS}
-    ${WIN32_LIBS}
+    ${FFMPEG_LIBRARIES}
     mediasoupclient
     webrtc
     sdptransform
     sioclient
+    ${WIN32_LIBS}
 )
 # vcpkg包
-target_link_libraries(${PROJECT_NAME} PRIVATE absl::base absl::strings absl::optional)
-target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+    absl::base absl::strings absl::optional
+    spdlog::spdlog
+)
+
 

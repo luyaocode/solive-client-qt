@@ -8,5 +8,7 @@
         "protocol": "wss",
         "host": "api.chaosgomoku.fun",
         "port": 5000
-    }
+    },
+  "recordSavePath": "save",
+  "logPath": "log"
 }

@@ -1,3 +1,18 @@
+* {
+    font-family: "Arial"; /* 设置字体 */
+    font-size: 12pt;      /* 设置字体大小 */
+    font-weight: normal;  /* 设置字体粗细（normal、bold等） */
+    color: #000000;       /* 设置字体颜色 */
+}
+
+QPushButton:disabled {
+    background-color: gray;
+}
+
+QComboBox:disabled {
+    background-color: gray;
+}
+
 /* 设置 QMainWindow 的背景图片 */
 QMainWindow {
     background-image: url(:/images/background.png);
@@ -8,4 +23,25 @@ QMainWindow QLabel#label_2,#label_4{
 }
 QMainWindow QLabel#conn_state_label,#online_num_label{
     color:red;
+}
+
+/*QToolBar */
+QMainWindow QToolBar{
+    background-color: white;
+    color:black;
+}
+
+QMainWindow QDialog{
+    background-color: #2e2e2e;
+    border: 2px solid #444444;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+QMainWindow QLabel#msgLabel{
+    color:white;
+}
+
+#VideoControlBar QPushButton{
+    color:white;
 }
