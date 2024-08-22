@@ -3,6 +3,8 @@
 
 #include <QObject>
 #include <api/media_stream_interface.h>
+#include "UtilDef.h"
+using namespace SoLive::Util;
 
 namespace SoLive::Ctrl
 {
@@ -15,6 +17,7 @@ namespace SoLive::Ctrl
         AudioPlayer& init();
         void stop();
         void start();
+        void pause();
         inline bool isPlaying() const { return _isPlaying; }
 
         void OnData(const void* audio_data,
@@ -44,9 +47,10 @@ namespace SoLive::Ctrl
     Q_SIGNALS:
         void sendAudioInfo(int bits_per_sample,int sample_rate,int number_of_channels);
     private Q_SLOTS:
-        void startRecord();
-        void pauseRecord();
-        void stopRecord();
+        void onStartRecord();
+        void onPauseRecord();
+        void onStopRecord();
+        void onEvent(const Event& e);
     };
 }
 #endif // AUDIOPLAYER_H

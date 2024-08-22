@@ -30,12 +30,31 @@ namespace SoLive::Util
         _videoRecorderPtr->init();
         _audioPlayerPtr->init();
         _videoRendererPtr->init();
+        setupConnection();
+    }
+
+    void MediaManager::setupConnection()
+    {
+        connect(_videoRendererPtr.get(), SIGNAL(sendEvent(const Event&)), this, SLOT(onEvent(const Event&)));
     }
 
     MediaManager::~MediaManager()
     {
         stopRecord();
         stopPlay();
+    }
+
+    void MediaManager::onEvent(const Event& e)
+    {
+        switch (e.type)
+        {
+        case EventType::PlayStatus:
+        case EventType::Muted:
+            sendEvent(e);
+            break;
+        default:
+            break;
+        }
     }
 
     void MediaManager::startRecord(RecordMode recordMode)

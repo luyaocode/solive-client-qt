@@ -47,16 +47,20 @@ namespace SoLive::Util
         void screenShot();
         void startPlay(const QString& filePath);
         void stopPlay();
+        void sendEvent(const Event& e);
     private Q_SLOTS:
         inline void onCurrRoomChanged(const QString& room) { _roomId = room; }
+        void onEvent(const Event& e);
     private:
         MediaManager();
         ~MediaManager();
-        RecordMode _recordMode{RecordMode::VideoAndAudio};
-        QString _roomId;
         MediaManager(const MediaManager&) = delete;
         MediaManager& operator=(const MediaManager&) = delete;
+        void setupConnection();
 
+    private:
+        QString _roomId;
+        RecordMode _recordMode{ RecordMode::VideoAndAudio };
         SoLive::Util::ThreadSafeQueue<QByteArray>   _audioQueue;        // 音频帧队列
         SoLive::Util::ThreadSafeQueue<QImage>       _videoQueue;        // 视频帧队列
         SoLive::Util::ThreadSafeQueue<webrtc::VideoFrame>       _videoFrameQueue;      // 原始视频帧队列

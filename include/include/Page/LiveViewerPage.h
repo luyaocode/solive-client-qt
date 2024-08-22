@@ -8,6 +8,8 @@
 #include "PageDef.h"
 #include "LiveClient.h"
 #include "ISocketClientObserver.h"
+#include "UtilDef.h"
+using namespace SoLive::Util;
 
 namespace Ui
 {
@@ -56,6 +58,7 @@ namespace SoLive::Page
 		void onRoomConnected(const QString& room);
 		void onClearWidget();
 		void onCurrRoomChanged(const QString& room);
+		void onEvent(const Event& e);
 	public:
 		void onConnectionStateChanged(SoLive::ProtocolSocketClient::ConnectionState newState) override;
 	};

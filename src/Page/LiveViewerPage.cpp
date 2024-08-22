@@ -177,6 +177,7 @@ namespace SoLive::Page
 		connect(this, SIGNAL(currRoomChanged(const QString&)), this, SLOT(onCurrRoomChanged(const QString&)));
 		auto& mediaMgr = SoLive::Util::MediaManager::instance();
 		connect(this, SIGNAL(currRoomChanged(const QString&)), &mediaMgr, SLOT(onCurrRoomChanged(const QString&)));
+		connect(&mediaMgr, SIGNAL(sendEvent(const Event&)), this, SLOT(onEvent(const Event&)));
 	}
 
 	void LiveViewerPage::setCurrRoom(const QString& room)
@@ -243,6 +244,31 @@ namespace SoLive::Page
 			_ui->record_btn->setEnabled(true);
 			_ui->record_combo->setEnabled(true);
 			_ui->screen_shot_btn->setEnabled(true);
+		}
+	}
+
+	void LiveViewerPage::onEvent(const Event& e)
+	{
+		switch (e.type)
+		{
+		case EventType::PlayStatus:
+			if (_videoTrack)
+			{
+				_videoTrack->set_enabled(e.play);
+			}
+			if (_audioTrack)
+			{
+				_audioTrack->set_enabled(e.play);
+			}
+			break;
+		case EventType::Muted:
+			if (_audioTrack)
+			{
+				_audioTrack->set_enabled(!e.muted);
+			}
+			break;
+		default:
+			break;
 		}
 	}
 

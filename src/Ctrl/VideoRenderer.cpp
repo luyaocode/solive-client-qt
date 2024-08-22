@@ -12,7 +12,8 @@ namespace SoLive::Ctrl
         _clearRequested(false),
         _isRendering(false),
         _screenShotRequest(false),
-        _isRecording(false)
+        _isRecording(false),
+        _muted(false)
 	{
         setupUi();
 	}
@@ -44,27 +45,30 @@ namespace SoLive::Ctrl
         _clearRequested = true;
         _current_image = QImage();
         _overlays.clear();
-        _isRendering = false;
+        setIsRendering(false);
         update();
     }
 
     void VideoRenderer::start()
     {
         QMutexLocker locker(&_mutex);
-        _isRendering = true;
+        setIsRendering(true);
+    }
+
+    void VideoRenderer::setIsRendering(bool flag)
+    {
+        if (isRendering() != flag)
+        {
+            _isRendering = flag;
+            renderStatusChanged(); //SIGNAL
+        }
     }
 
 	void VideoRenderer::OnFrame(const webrtc::VideoFrame& frame)
 	{
-        if (!_isRendering)
+        if (!isRendering())
         {
             return;
-        }
-        if (_isRecording)
-        {
-            auto& mediaMgr = SoLive::Util::MediaManager::instance();
-            auto& videoFrameQueue = mediaMgr.videoFrameQueue();
-            videoFrameQueue.push(frame);
         }
         // 假设视频帧格式是I420（YUV格式）
         rtc::scoped_refptr<webrtc::I420BufferInterface> buffer = frame.video_frame_buffer()->ToI420();
@@ -74,6 +78,13 @@ namespace SoLive::Ctrl
         // 将视频帧转换为QImage
         int width = buffer->width();
         int height = buffer->height();
+        if (_isRecording)
+        {
+            auto& mediaMgr = SoLive::Util::MediaManager::instance();
+            auto& videoFrameQueue = mediaMgr.videoFrameQueue();
+            videoFrameQueue.push(frame);
+        }
+        sendVideoInfo(width, height); //SIGNAL
 
         QImage image(width, height, QImage::Format_RGB32);
 
@@ -133,6 +144,26 @@ namespace SoLive::Ctrl
     {
         auto& mediaMgr = SoLive::Util::MediaManager::instance();
         connect(&mediaMgr,SIGNAL(screenShot()),this,SLOT(onScreenShot()));
+        connect(&mediaMgr, SIGNAL(startRecordVideo(const QString&)), this, SLOT(onStartRecord()));
+        connect(&mediaMgr, SIGNAL(stopRecordVideo()), this, SLOT(onStopRecord()));
+        connect(&mediaMgr, SIGNAL(sendEvent(const Event&)), this, SLOT(onEvent(const Event&)));
+
+        connect(this, SIGNAL(renderStatusChanged()), this, SLOT(onRenderStausChanged()));
+        connect(_videoCtrlBar->play_pause_btn, &QPushButton::clicked, [this]()
+            {
+                Event e;
+                e.type = EventType::PlayStatus;
+                e.play = !isRendering();
+                sendEvent(e);
+            });
+        connect(_videoCtrlBar->mute_btn, &QPushButton::clicked, [this]()
+            {
+                Event e;
+                e.type = EventType::Muted;
+                e.muted = !_muted;
+                sendEvent(e);
+            });
+
     }
 
     void VideoRenderer::addOverlay(const Overlay& overlay)
@@ -190,18 +221,49 @@ namespace SoLive::Ctrl
         }
     }
 
-    void VideoRenderer::startRecord()
+    void VideoRenderer::onStartRecord()
     {
         _isRecording = true;
     }
 
-    void VideoRenderer::pauseRecord()
+    void VideoRenderer::onPauseRecord()
     {
         _isRecording = false;
     }
 
-    void VideoRenderer::stopRecord()
+    void VideoRenderer::onStopRecord()
     {
         _isRecording = false;
+    }
+
+    void VideoRenderer::onRenderStausChanged()
+    {
+        if(isRendering())
+        {
+            _videoCtrlBar->play_pause_btn->setText("暂停");
+        }
+        else
+        {
+            _videoCtrlBar->play_pause_btn->setText("播放");
+            _muted = false;
+            _videoCtrlBar->mute_btn->setText(tr("静音"));
+        }
+        _videoCtrlBar->mute_btn->setEnabled(isRendering());
+    }
+
+    void VideoRenderer::onEvent(const Event& e)
+    {
+        switch (e.type)
+        {
+        case EventType::PlayStatus:
+            setIsRendering(e.play);
+            break;
+        case EventType::Muted:
+            _muted = e.muted;
+            _videoCtrlBar->mute_btn->setText(_muted?tr("取消静音"):tr("静音"));
+            break;
+        default:
+            break;
+        }
     }
 }

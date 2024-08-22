@@ -33,6 +33,11 @@ namespace SoLive::Ctrl
         _isPlaying = true;
     }
 
+    void AudioPlayer::pause()
+    {
+        _isPlaying = false;
+    }
+
     void AudioPlayer::OnData(const void* audio_data,
         int bits_per_sample,
         int sample_rate,
@@ -70,26 +75,42 @@ namespace SoLive::Ctrl
         connect(&mediaManager,
             SIGNAL(startRecordAudio(const QString&)),
             this,
-            SLOT(startRecord()));
+            SLOT(onStartRecord()));
         connect(&mediaManager,
             SIGNAL(stopRecordAudio()),
             this,
-            SLOT(stopRecord()));
+            SLOT(onStopRecord()));
+        connect(&mediaManager,
+            SIGNAL(sendEvent(const Event&)),
+            this,
+            SLOT(onEvent(const Event&)));
     }
 
-    void AudioPlayer::startRecord()
+    void AudioPlayer::onStartRecord()
     {
         _isRecording = true;
     }
 
-    void AudioPlayer::pauseRecord()
+    void AudioPlayer::onPauseRecord()
     {
         _isRecording = false;
     }
 
-    void AudioPlayer::stopRecord()
+    void AudioPlayer::onStopRecord()
     {
         _isRecording = false;
+    }
+
+    void AudioPlayer::onEvent(const Event& e)
+    {
+        switch (e.type)
+        {
+        case EventType::PlayStatus:
+            _isPlaying = e.play;
+            break;
+        default:
+            break;
+        }
     }
 
     void AudioPlayer::printByte(const void* audio_data,

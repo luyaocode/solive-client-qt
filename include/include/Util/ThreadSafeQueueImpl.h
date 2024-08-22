@@ -29,7 +29,7 @@ namespace SoLive::Util
     {
         std::unique_lock<std::mutex> lock(_mutex);
         _condition.wait(lock, [this] { return !_queue.empty(); }); // Wait until queue is not empty
-        item = _queue.front();
+        item = std::move(_queue.front());
         _queue.pop();
     }
 }

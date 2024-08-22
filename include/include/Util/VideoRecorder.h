@@ -7,10 +7,12 @@
 #include <condition_variable>
 
 extern "C" {
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
-#include <libavutil/opt.h>
-#include <libswscale/swscale.h>
+    #include <libavformat/avformat.h>
+    #include <libavcodec/avcodec.h>
+    #include <libavutil/opt.h>
+    #include <libswscale/swscale.h>
+    #include <libavutil/imgutils.h>
+    #include <libavutil/frame.h>
 }
 namespace SoLive::Util
 {
@@ -18,16 +20,14 @@ namespace SoLive::Util
     {
         Q_OBJECT
     public:
-        VideoRecorder()
-            : _isRecording(false), _formatContext(nullptr), _videoStream(nullptr), _codecContext(nullptr), _frame(nullptr),
-            _width(800), _height(600), _frameCount(0)
-        {
-        }
+        VideoRecorder();
         ~VideoRecorder();
         void init();
+        void end();
     private Q_SLOTS:
         void start(const QString& filePath = "");
         void stop();
+        void setVideoInfo(int width,int height,int bitRate,int fps);
     private:
         void setupConnection();
         void handleScreenShot();
@@ -39,12 +39,14 @@ namespace SoLive::Util
         AVStream* _videoStream;
         AVCodecContext* _codecContext;
         AVFrame* _frame;
-        AVPacket _packet;
+        AVPacket* _packet;
         SwsContext* _swsContext;
         int _frameCount;
         QFile _videoFile;
+        int _bitRate;
         int _width;
         int _height;
+        int _fps;
     };
 }
 #endif // !VIDEORECORDER_H

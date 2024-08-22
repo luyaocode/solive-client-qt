@@ -7,6 +7,8 @@
 #include <QMutexLocker>
 #include <api/video/video_frame.h>
 #include <api/video/video_sink_interface.h>
+#include "UtilDef.h"
+using namespace SoLive::Util;
 
 namespace Ui
 {
@@ -49,6 +51,8 @@ namespace SoLive::Ctrl
         public rtc::VideoSinkInterface<webrtc::VideoFrame>
     {
         Q_OBJECT
+            Q_PROPERTY(bool isRendering READ isRendering WRITE setIsRendering NOTIFY renderStatusChanged)
+
     public:
         virtual ~VideoRenderer();
         VideoRenderer(QWidget* parent = nullptr);
@@ -56,16 +60,24 @@ namespace SoLive::Ctrl
         void clear();
         void start();
         inline bool isRendering() const { return _isRendering; }
+        void setIsRendering(bool flag);
         void OnFrame(const webrtc::VideoFrame& frame) override;
         void addOverlay(const Overlay& overlay);
+    Q_SIGNALS:
+        // TODO
+        void sendVideoInfo(int width, int height, int bitRate=40000,int fps=30);
+        void renderStatusChanged();
+        void sendEvent(const Event& e);
     protected:
         void paintEvent(QPaintEvent* event) override;
     private Q_SLOTS:
         void onRoomConnected(const QString& roomId);
         void onScreenShot() { _screenShotRequest = true; }
-        void startRecord();
-        void pauseRecord();
-        void stopRecord();
+        void onStartRecord();
+        void onPauseRecord();
+        void onStopRecord();
+        void onRenderStausChanged();
+        void onEvent(const Event& e);
     private:
         Ui::VideoControlBar*    _videoCtrlBar;
         QImage                  _current_image;
@@ -75,6 +87,7 @@ namespace SoLive::Ctrl
         bool                    _isRendering;
         bool                    _screenShotRequest;
         bool                    _isRecording;
+        bool                    _muted;
     private:
         void setupUi();
         void setupConnection();
