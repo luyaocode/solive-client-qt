@@ -59,6 +59,12 @@ find_package(absl REQUIRED CONFIG)
 # 使用vcpkg安装无法指定静态多线程运行时库和_ITERATOR_DEBUG_LEVEL，采用CMake编译静态库就好了
 find_package(spdlog REQUIRED CONFIG)
 
+#find_package(OpenSSL REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system beast asio)
+set(BOOST_LIBRARIES Boost::beast Boost::asio Boost::system)
+
+find_package(OpenSSL REQUIRED)
+
 # 添加头文件
 set(INCLUDE_PATH ${CMAKE_SOURCE_DIR}/include/include)
 file(GLOB_RECURSE HEADERS_DIRECTORY LIST_DIRECTORIES true
@@ -70,6 +76,7 @@ list(APPEND HEADERS_DIRECTORY
     ${CMAKE_SOURCE_DIR}/include/libwebrtc
     ${CMAKE_SOURCE_DIR}/include/json-3.11.2
     ${CMAKE_SOURCE_DIR}/include/json-3.11.2/nlohmann
+    ${CMAKE_SOURCE_DIR}/include/sio-client
     "D:/repos/vcpkg/installed/x64-windows/include"
     "D:/repos/vcpkg/installed/x64-windows-static/include"
 )
@@ -158,14 +165,21 @@ set(WIN32_LIBS
     mfreadwrite
 )
 # 查找库
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${QT_LIBS}
+    #${BOOST_LIBRARIES}
+    #${SSL_LIBS}
     ${FFMPEG_LIBRARIES}
-    mediasoupclient
+    ${BOOST_LIBRARIES}
+    ${QT_LIBS}
+    ${WIN32_LIBS}
+    #sioclient
+    sioclient_tls
+    OpenSSL::SSL
+    OpenSSL::Crypto
     webrtc
     sdptransform
-    sioclient
-    ${WIN32_LIBS}
+    mediasoupclient
 )
 # vcpkg包
 target_link_libraries(${PROJECT_NAME} PRIVATE 

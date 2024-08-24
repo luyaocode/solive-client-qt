@@ -1,10 +1,7 @@
 #ifndef ISOCKETSTRATEGY_H
 #define ISOCKETSTRATEGY_H
 #include <string>
-namespace sio
-{
-    class client;
-}
+#include "ISocket.h"
 
 namespace SoLive::ProtocolSocketClient
 {
@@ -12,7 +9,7 @@ namespace SoLive::ProtocolSocketClient
     {
     public:
         virtual ~ISocketStrategy() = default;
-        virtual void connect(sio::client& client,const std::string& uri) = 0;
+        virtual void connect(ISocket& client,const std::string& uri) = 0;
     };
 } // namespace ProtocolSocketClient
 

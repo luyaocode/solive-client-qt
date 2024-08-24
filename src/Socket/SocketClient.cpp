@@ -1,6 +1,10 @@
-#include "stdafx.h"
+ï»¿#include "stdafx.h"
 #include "SocketClient.h"
 #include "ISocketClientObserver.h"
+#include "SioAdapter.h"
+#include "BeastAdapter.h"
+#include "HttpSocketStrategy.h"
+#include "HttpsSocketStrategy.h"
 
 namespace SoLive::ProtocolSocketClient
 {
@@ -17,20 +21,28 @@ namespace SoLive::ProtocolSocketClient
 
     const std::string& SocketClient::socketId() const
     {
-        return _client.get_sessionid();
+        return _client->id();
     }
 
     void SocketClient::setStrategy(std::unique_ptr<ISocketStrategy> newStrategy)
     {
         _strategy = std::move(newStrategy);
+        if (auto strategy = dynamic_cast<HttpSocketStrategy*>(_strategy.get()))
+        {
+            _client = std::make_unique<SioAdapter>();
+        }
+        else
+        {
+            //_client = std::make_unique<BeastAdapter>(new BeastAdapter);
+        }
+        setListeners();
     }
 
     void SocketClient::connect(const std::string& uri)
     {
         if (_strategy)
         {
-            _strategy->connect(_client,uri);
-            setListeners();
+            _strategy->connect(*_client, uri);
         }
         else
         {
@@ -38,9 +50,9 @@ namespace SoLive::ProtocolSocketClient
         }
     }
 
-    void SocketClient::listen(const std::string& eName, const std::function<void(sio::event&)>& callback)
+    void SocketClient::listen(const std::string& eName, const std::function<void(const EventVariant& event)>& callback)
     {
-        _client.socket()->on(eName, callback);
+        _client->listen(eName, callback);
     }
 
     void SocketClient::notifyObservers(EventType eventType)
@@ -63,68 +75,77 @@ namespace SoLive::ProtocolSocketClient
 
     void SocketClient::setListeners()
     {
-        // ÉèÖÃÁ¬½Ó³É¹¦µÄ¼àÌýÆ÷
-        _client.set_open_listener([this]()
-            {
-                setState(ConnectionState::Connected);
-                LOG(Info, "Connection opened!")
-            });
-
-        // ÉèÖÃÁ¬½ÓÊ§°ÜµÄ¼àÌýÆ÷
-        _client.set_fail_listener([this]()
-            {
-                setState(ConnectionState::Disconnected);
-                LOG(Warning, "Connection failed!")
-            });
-
-        // ÉèÖÃÖØÁ¬ÖÐµÄ¼àÌýÆ÷
-        _client.set_reconnecting_listener([this]()
-            {
-                setState(ConnectionState::Reconnecting);
-                LOG(Info, "Reconnecting...")
-            });
-
-        // ÉèÖÃÖØÁ¬µÄ¼àÌýÆ÷
-        _client.set_reconnect_listener([this](unsigned attempts, unsigned delay)
-            {
-                setState(ConnectionState::Reconnecting);
-                auto strInfo = "Reconnected after " + std::to_string(attempts) + " attempts with delay " + std::to_string(delay) + "ms";
-                LOG(Info, strInfo)
-            });
-
-        // ÉèÖÃÁ¬½Ó¹Ø±ÕµÄ¼àÌýÆ÷
-        _client.set_close_listener([this](sio::client::close_reason const& reason)
-            {
-                setState(ConnectionState::Disconnected);
-                LOG(Info, "Connection closed! Reason: " + reason)
-            });
-
-        // ÉèÖÃ Socket ´ò¿ªµÄ¼àÌýÆ÷
-        _client.set_socket_open_listener([this](const std::string& nsp)
-            {
-                LOG(Info, "Socket opened in namespace: " + nsp)
-            });
-
-        // ÉèÖÃ Socket ¹Ø±ÕµÄ¼àÌýÆ÷
-        _client.set_socket_close_listener([this](const std::string& nsp)
-            {
-                LOG(Info, "Socket closed in namespace: " + nsp)
-            });
-
-        // ¼àÌýµ±Ç°ÔÚÏßÈËÊý
-        _client.socket()->on("currentHeadCount", [this](sio::event& ev)
-            {
-                auto message = ev.get_message();
-                if (message->get_flag() == sio::message::flag_integer)
+        SioAdapter* cli = dynamic_cast<SioAdapter*>(_client.get());
+        if (cli)
+        {
+            // è®¾ç½®è¿žæŽ¥æˆåŠŸçš„ç›‘å¬å™¨
+            cli->client().set_open_listener([this]()
                 {
-                    int headCount = message->get_int();
-                    setOnlinePersonNum(headCount);
-                }
-                else
+                    setState(ConnectionState::Connected);
+            LOG(Info, "Connection opened!")
+                });
+
+            // è®¾ç½®è¿žæŽ¥å¤±è´¥çš„ç›‘å¬å™¨
+            cli->client().set_fail_listener([this]()
                 {
-                    LOG(Warning, "Unexpected message type.")
-                }
-            });
+                    setState(ConnectionState::Disconnected);
+            LOG(Warning, "Connection failed!")
+                });
+
+            // è®¾ç½®é‡è¿žä¸­çš„ç›‘å¬å™¨
+            cli->client().set_reconnecting_listener([this]()
+                {
+                    setState(ConnectionState::Reconnecting);
+            LOG(Info, "Reconnecting...")
+                });
+
+            // è®¾ç½®é‡è¿žçš„ç›‘å¬å™¨
+            cli->client().set_reconnect_listener([&](unsigned attempts, unsigned delay)
+                {
+                    //cli->client().socket()->emit("hello");
+                    setState(ConnectionState::Reconnecting);
+                    auto strInfo = "Reconnected after " + std::to_string(attempts) + " attempts with delay " + std::to_string(delay) + "ms";
+                    LOG(Info, strInfo)
+                });
+
+            // è®¾ç½®è¿žæŽ¥å…³é—­çš„ç›‘å¬å™¨
+            cli->client().set_close_listener([this](sio::client::close_reason const& reason)
+                {
+                    setState(ConnectionState::Disconnected);
+            LOG(Info, "Connection closed! Reason: " + reason)
+                });
+
+            // è®¾ç½® Socket æ‰“å¼€çš„ç›‘å¬å™¨
+            cli->client().set_socket_open_listener([this](const std::string& nsp)
+                {
+                    LOG(Info, "Socket opened in namespace: " + nsp)
+                });
+
+            // è®¾ç½® Socket å…³é—­çš„ç›‘å¬å™¨
+            cli->client().set_socket_close_listener([this](const std::string& nsp)
+                {
+                    LOG(Info, "Socket closed in namespace: " + nsp)
+                });
+
+            // ç›‘å¬å½“å‰åœ¨çº¿äººæ•°
+            cli->client().socket()->on("currentHeadCount", [this](sio::event& ev)
+                {
+                    auto message = ev.get_message();
+                    if (message->get_flag() == sio::message::flag_integer)
+                    {
+                        int headCount = message->get_int();
+                        setOnlinePersonNum(headCount);
+                    }
+                    else
+                    {
+                        LOG(Warning, "Unexpected message type.")
+                    }
+                });
+        }
+        else
+        {
+
+        }
     }
 
     void SocketClient::setState(ConnectionState newState)

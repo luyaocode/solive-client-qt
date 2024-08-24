@@ -154,164 +154,219 @@ namespace SoLive::LiveClient
     void LiveClient::setListener()
     {
         auto& socketClient = SoLive::ProtocolSocketClient::SocketClient::getInstance();
-        socketClient.listen(SoLive::Page::EVENT_ROOM_NOT_EXIST,[this](sio::event& ev){
-            auto message = ev.get_message();
-            if (message->get_flag() == sio::message::flag_string)
+        socketClient.listen(SoLive::Page::EVENT_ROOM_NOT_EXIST,[this](const EventVariant& event){
+            if (std::holds_alternative<sio::event>(event))
             {
-                auto roomId = message->get_string();
-                QString st = QString(roomId.c_str());
-                // 使用 Qt 的信号和槽机制确保在 GUI 线程中显示消息框
-                QMetaObject::invokeMethod(this, "showWarningMessageBox", Qt::BlockingQueuedConnection,
-                    Q_ARG(QString, st));
+                sio::event ev = std::get<sio::event>(event);
+                auto message = ev.get_message();
+                if (message->get_flag() == sio::message::flag_string)
+                {
+                    auto roomId = message->get_string();
+                    QString st = QString(roomId.c_str());
+                    // 使用 Qt 的信号和槽机制确保在 GUI 线程中显示消息框
+                    QMetaObject::invokeMethod(this, "showWarningMessageBox", Qt::BlockingQueuedConnection,
+                        Q_ARG(QString, st));
+                }
+                else
+                {
+                    LOG(Warning, "Unexpected message type.")
+                }
             }
-            else
+            else if (std::holds_alternative<std::string>(event))
             {
-                LOG(Warning, "Unexpected message type.")
+                std::string ev = std::get<std::string>(event);
             }
         });
 
         // 进入房间
-        socketClient.listen(SoLive::Page::EVENT_ROOM_ENTERED, [&](sio::event& ev)
+        socketClient.listen(SoLive::Page::EVENT_ROOM_ENTERED, [&](const EventVariant& event)
             {
-                if (!_oldRoom.isEmpty())
+                if (std::holds_alternative<sio::event>(event))
                 {
-                    sigClearWidget();
+                    if (!_oldRoom.isEmpty())
+                    {
+                        sigClearWidget();
+                    }
+                    init();
+                    auto jsonObj = std::make_unique<QJsonObject>();
+                    (*jsonObj)["from"] = "qt_client";
+                    socketClient.emit(SoLive::Page::EVENT_GET_RTP_CAPA, std::move(jsonObj));
                 }
-                init();
-                auto jsonObj = std::make_unique<QJsonObject>();
-                (*jsonObj)["from"] = "qt_client";
-                socketClient.emit(SoLive::Page::EVENT_GET_RTP_CAPA,std::move(jsonObj));
+                else if (std::holds_alternative<std::string>(event))
+                {
+                    std::string ev = std::get<std::string>(event);
+                }
             });
 
         // 服务器路由RTP能力
-        socketClient.listen(SoLive::Page::EVENT_RTP_CAPA_GOT, [&](sio::event& ev)
+        socketClient.listen(SoLive::Page::EVENT_RTP_CAPA_GOT, [&](const EventVariant& event)
             {
-                auto message = ev.get_message();
-                auto flag = message->get_flag();
-                if (flag == sio::message::flag_string)
-                {
-                    auto strJson = message->get_string();
-                    nlohmann::json jsonObject = nlohmann::json::parse(strJson);
-                    _devicePtr->Load(jsonObject);
+                if (std::holds_alternative<sio::event>(event)) {
+                    sio::event ev = std::get<sio::event>(event);
+                    auto message = ev.get_message();
+                    auto flag = message->get_flag();
+                    if (flag == sio::message::flag_string)
+                    {
+                        auto strJson = message->get_string();
+                        nlohmann::json jsonObject = nlohmann::json::parse(strJson);
+                        _devicePtr->Load(jsonObject);
 
-                    auto jsonObj = std::make_unique<QJsonObject>();
-                    (*jsonObj)["from"] = "qt_client";
-                    socketClient.emit(SoLive::Page::EVENT_CREATE_CONS_TRP, std::move(jsonObj));
+                        auto jsonObj = std::make_unique<QJsonObject>();
+                        (*jsonObj)["from"] = "qt_client";
+                        socketClient.emit(SoLive::Page::EVENT_CREATE_CONS_TRP, std::move(jsonObj));
+                    }
+                    else
+                    {
+                        LOG(Warning, "Unexpected message type.")
+                    }
                 }
-                else
+                else if(std::holds_alternative<std::string>(event))
                 {
-                    LOG(Warning, "Unexpected message type.")
+                    std::string ev = std::get<std::string>(event);
                 }
+
             });
 
         // 消费者通道创建成功
-        socketClient.listen(SoLive::Page::EVENT_CONS_TRP_CREATED, [&](sio::event& ev)
+        socketClient.listen(SoLive::Page::EVENT_CONS_TRP_CREATED, [&](const EventVariant& event)
             {
-                auto message = ev.get_message();
-                auto flag = message->get_flag();
-                if (flag == sio::message::flag_string)
+                if (std::holds_alternative<sio::event>(event))
                 {
-                    auto strJson = message->get_string();
-                    nlohmann::json jsonObject = nlohmann::json::parse(strJson);
-                    std::string strTrpId = jsonObject["id"].get<std::string>();
-                    nlohmann::json iceParameters = jsonObject["iceParameters"].get<nlohmann::json>();
-                    std::string strIceParameters = iceParameters.dump();
-                    nlohmann::json iceCandidates = jsonObject["iceCandidates"].get<nlohmann::json>();
-                    std::string strIceCandidates = iceCandidates.dump();
-                    nlohmann::json dtlsParameters = jsonObject["dtlsParameters"].get<nlohmann::json>();
-                    std::string strDtlsParameters = dtlsParameters.dump();
-                    _recvTrpListenerPtr = std::make_unique<RecvTrpListener>();
-                    mediasoupclient::RecvTransport* recvTrp = _devicePtr->CreateRecvTransport(
-                        _recvTrpListenerPtr.get(),
-                        strTrpId, 
-                        iceParameters, 
-                        iceCandidates, 
-                        dtlsParameters);
-                    _bRecvTrpCreated = true;
+                    sio::event ev = std::get<sio::event>(event);
+                    auto message = ev.get_message();
+                    auto flag = message->get_flag();
+                    if (flag == sio::message::flag_string)
+                    {
+                        auto strJson = message->get_string();
+                        nlohmann::json jsonObject = nlohmann::json::parse(strJson);
+                        std::string strTrpId = jsonObject["id"].get<std::string>();
+                        nlohmann::json iceParameters = jsonObject["iceParameters"].get<nlohmann::json>();
+                        std::string strIceParameters = iceParameters.dump();
+                        nlohmann::json iceCandidates = jsonObject["iceCandidates"].get<nlohmann::json>();
+                        std::string strIceCandidates = iceCandidates.dump();
+                        nlohmann::json dtlsParameters = jsonObject["dtlsParameters"].get<nlohmann::json>();
+                        std::string strDtlsParameters = dtlsParameters.dump();
+                        _recvTrpListenerPtr = std::make_unique<RecvTrpListener>();
+                        mediasoupclient::RecvTransport* recvTrp = _devicePtr->CreateRecvTransport(
+                            _recvTrpListenerPtr.get(),
+                            strTrpId,
+                            iceParameters,
+                            iceCandidates,
+                            dtlsParameters);
+                        _bRecvTrpCreated = true;
 
-                    _recvTransportPtr = std::unique_ptr<mediasoupclient::RecvTransport>(recvTrp);
-                    consume();
+                        _recvTransportPtr = std::unique_ptr<mediasoupclient::RecvTransport>(recvTrp);
+                        consume();
+                    }
+                    else
+                    {
+                        LOG(Warning, "Unexpected message type.")
+                    }
                 }
-                else
+                else if (std::holds_alternative<std::string>(event))
                 {
-                    LOG(Warning, "Unexpected message type.")
+                    std::string ev = std::get<std::string>(event);
                 }
             });
 
         // 消费者创建成功
-        socketClient.listen(SoLive::Page::EVENT_SUBSCRIBED, [&](sio::event& ev)
+        socketClient.listen(SoLive::Page::EVENT_SUBSCRIBED, [&](const EventVariant& event)
             {
-                auto message = ev.get_message();
-                auto flag = message->get_flag();
-                if (flag == sio::message::flag_string)
+                if (std::holds_alternative<sio::event>(event))
                 {
-                    auto strJson = message->get_string();
-                    nlohmann::json jsonObject = nlohmann::json::parse(strJson);
-                    for (nlohmann::json::iterator it = jsonObject.begin(); it != jsonObject.end(); ++it)
+                    sio::event ev = std::get<sio::event>(event);
+                    auto message = ev.get_message();
+                    auto flag = message->get_flag();
+                    if (flag == sio::message::flag_string)
                     {
-                        auto peer = it.key();
-                        auto params = it.value();
-                        for (nlohmann::json::iterator it1 = params.begin(); it1 != params.end(); ++it1)
+                        auto strJson = message->get_string();
+                        nlohmann::json jsonObject = nlohmann::json::parse(strJson);
+                        for (nlohmann::json::iterator it = jsonObject.begin(); it != jsonObject.end(); ++it)
                         {
-                            auto producer = it1.key();
-                            auto params1 = it1.value();
-                            auto consumerId = params1["id"];
-                            auto kind = params1["kind"];
-                            auto rtpParameters = params1["rtpParameters"];
-                            
-                            _consumerListenerPtr = std::unique_ptr<ConsumerListener>();
-                            auto consumer = _recvTransportPtr->Consume(
-                                _consumerListenerPtr.get(),
-                                consumerId,
-                                producer,
-                                kind,
-                                &rtpParameters);
-                            auto consumerPtr = std::unique_ptr<mediasoupclient::Consumer>(consumer);
-                            _consumerVec.push_back(std::move(consumerPtr));
+                            auto peer = it.key();
+                            auto params = it.value();
+                            for (nlohmann::json::iterator it1 = params.begin(); it1 != params.end(); ++it1)
+                            {
+                                auto producer = it1.key();
+                                auto params1 = it1.value();
+                                auto consumerId = params1["id"];
+                                auto kind = params1["kind"];
+                                auto rtpParameters = params1["rtpParameters"];
+
+                                _consumerListenerPtr = std::unique_ptr<ConsumerListener>();
+                                auto consumer = _recvTransportPtr->Consume(
+                                    _consumerListenerPtr.get(),
+                                    consumerId,
+                                    producer,
+                                    kind,
+                                    &rtpParameters);
+                                auto consumerPtr = std::unique_ptr<mediasoupclient::Consumer>(consumer);
+                                _consumerVec.push_back(std::move(consumerPtr));
+                            }
                         }
                     }
+                    else
+                    {
+                        LOG(Warning, "Unexpected message type.")
+                    }
                 }
-                else
+                else if (std::holds_alternative<std::string>(event))
                 {
-                    LOG(Warning, "Unexpected message type.")
+                    std::string ev = std::get<std::string>(event);
                 }
             });
 
         // 消费者通道连接成功
-        socketClient.listen(SoLive::Page::EVENT_CONS_TRP_CONNECTED, [&](sio::event& ev)
+        socketClient.listen(SoLive::Page::EVENT_CONS_TRP_CONNECTED, [&](const EventVariant& event)
             {
-                std::vector<rtc::scoped_refptr<webrtc::MediaStreamTrackInterface>> tracks;
-                for (auto it = _consumerVec.begin(); it != _consumerVec.end(); ++it)
+                if (std::holds_alternative<sio::event>(event))
                 {
-                    auto id = (*it)->GetId();
-                    auto bKind = (*it)->GetKind();
-                    auto bClosed = (*it)->IsClosed();
-                    auto bPaused = (*it)->IsPaused();
-                    auto track = (*it)->GetTrack();
-                    tracks.emplace_back(track);
-                }
+                    sio::event ev = std::get<sio::event>(event);
+                    std::vector<rtc::scoped_refptr<webrtc::MediaStreamTrackInterface>> tracks;
+                    for (auto it = _consumerVec.begin(); it != _consumerVec.end(); ++it)
+                    {
+                        auto id = (*it)->GetId();
+                        auto bKind = (*it)->GetKind();
+                        auto bClosed = (*it)->IsClosed();
+                        auto bPaused = (*it)->IsPaused();
+                        auto track = (*it)->GetTrack();
+                        tracks.emplace_back(track);
+                    }
 
-                for (auto& track : tracks)
+                    for (auto& track : tracks)
+                    {
+                        addRemoteTrack(track);
+                    }
+                }
+                else if (std::holds_alternative<std::string>(event))
                 {
-                    addRemoteTrack(track);
+                    std::string ev = std::get<std::string>(event);
                 }
             });
 
 
         // 消费者resume成功
-        socketClient.listen(SoLive::Page::EVENT_RESUMED, [&](sio::event& ev)
+        socketClient.listen(SoLive::Page::EVENT_RESUMED, [&](const EventVariant& event)
             {
-                auto message = ev.get_message();
-                auto flag = message->get_flag();
-                if (flag == sio::message::flag_string)
+                if (std::holds_alternative<sio::event>(event))
                 {
-                    auto roomId = message->get_string();
-                    QString qstrRoomId = QString(roomId.c_str());
-                    roomConnected(qstrRoomId);
+                    sio::event ev = std::get<sio::event>(event);
+                    auto message = ev.get_message();
+                    auto flag = message->get_flag();
+                    if (flag == sio::message::flag_string)
+                    {
+                        auto roomId = message->get_string();
+                        QString qstrRoomId = QString(roomId.c_str());
+                        roomConnected(qstrRoomId);
+                    }
+                    else
+                    {
+                        LOG(Warning, "Unexpected message type.")
+                    }
                 }
-                else
+                else if (std::holds_alternative<std::string>(event))
                 {
-                    LOG(Warning, "Unexpected message type.")
+                    std::string ev = std::get<std::string>(event);
                 }
             });
     }

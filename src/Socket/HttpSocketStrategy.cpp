@@ -3,7 +3,7 @@
 
 namespace SoLive::ProtocolSocketClient
 {
-    void HttpSocketStrategy::connect(sio::client& client,const std::string& uri)
+    void HttpSocketStrategy::connect(ISocket& client,const std::string& uri)
     {
         LOG(Info,"Connecting to " +uri+" using HTTP.")
         client.connect(uri);

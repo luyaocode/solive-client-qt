@@ -15,6 +15,7 @@
 #include <iomanip>
 #include <sstream>
 #include <ctime>
+#include <variant>
 
 // Qt
 #include <QApplication>
@@ -48,12 +49,12 @@
 #include <QUrl>
 
 // Third party
-#include <api/video/i420_buffer.h>
-#include <api/video/video_frame.h>
-#include <rtc_base/ref_counted_object.h>
-#include <sio_client.h>
+//#include <api/video/i420_buffer.h>
+//#include <api/video/video_frame.h>
+//#include <rtc_base/ref_counted_object.h>
+//#include <sio_client.h>
 #include <absl/types/optional.h>
-#include "libmediasoupclient/mediasoupclient.hpp"
+//#include "libmediasoupclient/mediasoupclient.hpp"
 #include "nlohmann/json.hpp"
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>

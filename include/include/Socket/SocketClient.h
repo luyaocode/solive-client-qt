@@ -4,12 +4,12 @@
 #include "ISocketStrategy.h"
 #include <memory>
 #include <vector>
-#include <sio_client.h>
 #include <QString>
 #include <QJsonObject>
 #include <functional>
 #include <mutex>
 #include "SocketClientDef.h"
+#include "ISocket.h"
 
 namespace SoLive::ProtocolSocketClient
 {
@@ -19,10 +19,10 @@ namespace SoLive::ProtocolSocketClient
     {
     private:
         std::mutex _mtx;
-        std::unique_ptr<ISocketStrategy> _strategy;
-        sio::client _client;
-        ConnectionState _connState;
-        int _onlinePersonNum;
+        std::unique_ptr<ISocketStrategy>    _strategy;
+        std::unique_ptr<ISocket>            _client;
+        ConnectionState                     _connState;
+        int                                 _onlinePersonNum;
         std::vector<std::shared_ptr<ISocketClientObserver>> _observers;
     private:
         SocketClient();
@@ -39,7 +39,7 @@ namespace SoLive::ProtocolSocketClient
         const std::string& socketId() const;
         void setStrategy(std::unique_ptr<ISocketStrategy> newStrategy);
         void connect(const std::string& uri);
-        void listen(const std::string& eName, const std::function<void(sio::event&)>& callback);
+        void listen(const std::string& eName, const std::function<void(const EventVariant& event)>& callback);
         ConnectionState getState() const;
         void setOnlinePersonNum(int num);
         int getOnlinePersonNum() const;

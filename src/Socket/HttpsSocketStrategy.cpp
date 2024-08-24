@@ -4,9 +4,10 @@
 namespace SoLive::ProtocolSocketClient
 {
 
-    void HttpsSocketStrategy::connect(sio::client& client,const std::string& uri)
+    void HttpsSocketStrategy::connect(ISocket& client,const std::string& uri)
     {
         LOG(Info, "Connecting to " + uri + " using HTTPS.")
+        client.connect(uri);
     }
 
 } // namespace ProtocolSocketClient

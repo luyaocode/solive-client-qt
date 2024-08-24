@@ -5,6 +5,10 @@
 #include <QString>
 #include <mutex>
 #include <condition_variable>
+namespace webrtc
+{
+    class VideoFrame;
+}
 
 extern "C" {
     #include <libavformat/avformat.h>

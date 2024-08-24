@@ -25,8 +25,7 @@ namespace SoLive::ProtocolSocketClient
 
         std::string strEName = eName.toUtf8().constData();
         std::string strJson = jsonString.toUtf8().constData();
-        sio::message::list msg_list(strJson);
-        _client.socket()->emit(strEName, msg_list);
+        _client->emit(strEName, strJson);
 
         lock.unlock();
 

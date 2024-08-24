@@ -1,4 +1,9 @@
 ﻿#include "stdafx.h"
+#include <api/video/i420_buffer.h>
+#include <api/video/video_frame.h>
+#include <rtc_base/ref_counted_object.h>
+#include <absl/types/optional.h>
+#include "libmediasoupclient/mediasoupclient.hpp"
 #include "VideoRecorder.h"
 #include "MediaManager.h"
 #include "ThreadPool.h"

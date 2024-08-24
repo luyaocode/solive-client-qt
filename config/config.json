@@ -1,13 +1,13 @@
 {
-    "dev": {
+    "prod": {
         "protocol": "ws",
         "host": "localhost",
         "port": 5000
     },
-    "prod": {
+    "dev": {
         "protocol": "wss",
         "host": "api.chaosgomoku.fun",
-        "port": 5000
+        "port": 443
     },
   "recordSavePath": "save",
   "logPath": "log"

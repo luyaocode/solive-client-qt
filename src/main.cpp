@@ -2,12 +2,14 @@
 #include "MainWindow.h"
 #include "SocketClient.h"
 #include "HttpSocketStrategy.h"
+#include "HttpsSocketStrategy.h"
 #include "ConfigManager.h"
 #include "MediaManager.h"
 
 using SoLive::Logger::Logger;
 using SoLive::ProtocolSocketClient::SocketClient;
 using SoLive::ProtocolSocketClient::HttpSocketStrategy;
+using SoLive::ProtocolSocketClient::HttpsSocketStrategy;
 using SoLive::Page::MainWindow;
 using SoLive::Config::ConfigManager;
 using SoLive::Util::MediaManager;
@@ -65,7 +67,7 @@ int main(int argc, char* argv[])
     // 环境检测
     if (!checkFFmpeg())
     {
-        return 1;
+        std::cout << "FFmpeg failed." << std::endl;
     }
     // 加载全局配置
     std::string configPath = std::string(PROJECT_ROOT_DIR) + "/config/" + "config.json";
@@ -87,14 +89,7 @@ int main(int argc, char* argv[])
     QFont globalFont(fontFamilies[0], 12);
     app.setFont(globalFont);
 
-    // 加载主界面
-    MainWindow mainWindow;
-    mainWindow.show();
-
-    // 初始化媒体管理器
-    MediaManager::instance().init();
-
-	// 获取配置
+    // 获取配置
     std::string uri;
     try
     {
@@ -105,10 +100,17 @@ int main(int argc, char* argv[])
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
+    auto& socketClient = SocketClient::getInstance();
+    socketClient.setStrategy(std::make_unique<HttpSocketStrategy>());
+
+    // 加载主界面
+    MainWindow mainWindow;
+    mainWindow.show();
     // 连接服务器
-	auto& socketClient = SocketClient::getInstance();
-	socketClient.setStrategy(std::make_unique<HttpSocketStrategy>());
-	socketClient.connect(uri);
+    socketClient.connect(uri);
+
+    // 初始化媒体管理器
+    MediaManager::instance().init();
 
     std::string host = "stun.l.google.com";
     if (isPingable(host))

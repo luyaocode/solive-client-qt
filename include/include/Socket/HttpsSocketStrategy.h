@@ -9,7 +9,7 @@ namespace SoLive::ProtocolSocketClient
     class HttpsSocketStrategy : public ISocketStrategy
     {
     public:
-        void connect(sio::client& client,const std::string& uri) override;
+        void connect(ISocket& client,const std::string& uri) override;
     };
 
 } // namespace ProtocolSocketClient
