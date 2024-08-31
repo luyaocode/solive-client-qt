@@ -19,6 +19,7 @@ namespace SoLive::Util
 		PlayStatus,
 		Muted,
 		Volume,
+		Reconnect,
 	};
 
 	struct Event
@@ -26,7 +27,7 @@ namespace SoLive::Util
 		EventType type;
 		bool play;
 		bool muted;
-		int volume;
+		double volume;
 	};
 }
 

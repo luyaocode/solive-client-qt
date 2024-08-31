@@ -45,3 +45,6 @@ QMainWindow QLabel#msgLabel{
 #VideoControlBar QPushButton{
     color:white;
 }
+#VideoControlBar QLabel{
+    color:white;
+}

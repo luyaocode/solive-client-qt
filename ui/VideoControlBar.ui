@@ -48,11 +48,30 @@
    </item>
    <item>
     <widget class="QSlider" name="volume_slider">
+     <property name="maximum">
+      <number>100</number>
+     </property>
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
      <property name="tickPosition">
       <enum>QSlider::NoTicks</enum>
+     </property>
+     <property name="tickInterval">
+      <number>100</number>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="volume_lab">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>0</string>
      </property>
     </widget>
    </item>
@@ -73,13 +92,6 @@
     <widget class="QPushButton" name="fresh_btn">
      <property name="text">
       <string>刷新</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="max_screen_btn">
-     <property name="text">
-      <string>最大化</string>
      </property>
     </widget>
    </item>

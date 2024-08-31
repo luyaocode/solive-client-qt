@@ -28,7 +28,11 @@ namespace SoLive::Page
 	MainWindow::~MainWindow()
 	{
 		unsubscribeSocketClient();
-		delete _ui;
+		if (_ui)
+		{
+			delete _ui;
+			_ui = nullptr;
+		}
 	}
 
 	void MainWindow::setupUi()

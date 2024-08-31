@@ -12,6 +12,7 @@
 #include "ConnectionState.h"
 #include "SocketClient.h"
 #include "MessageManager.h"
+#include "PeerConnectionFactory.h"
 
 namespace SoLive::Page
 {
@@ -65,6 +66,42 @@ namespace SoLive::Page
 		delete _ui;
 	}
 
+	void LiveViewerPage::hideUi()
+	{
+		setVisibleRecursively(_ui->gridLayout,false);
+	}
+
+	void LiveViewerPage::showUi()
+	{
+		setVisibleRecursively(_ui->gridLayout, true);
+	}
+
+	void LiveViewerPage::setVisibleRecursively(QLayout* layout,bool show)
+	{
+		if (!layout) return;
+
+		for (int i = 0; i < layout->count(); ++i)
+		{
+			QLayoutItem* item = layout->itemAt(i);
+			if (item)
+			{
+				QWidget* widget = item->widget();
+				if (widget&&widget!=_ui->videoRendererWidget)
+				{
+					widget->setVisible(show);
+				}
+				else
+				{
+					QLayout* subLayout = item->layout();
+					if (subLayout)
+					{
+						setVisibleRecursively(subLayout,show);
+					}
+				}
+			}
+		}
+	}
+
 	void LiveViewerPage::setupUi()
 	{
 		_ui->setupUi(this);
@@ -79,7 +116,7 @@ namespace SoLive::Page
 		_audioPlayerPtr = mediaManager.audioPlayerPtr();
 		_videoRendererPtr = mediaManager.videoRendererPtr();
 		_videoRendererPtr->setParent(this);
-		_videoRendererPtr->setFixedSize(1200,900);
+		_videoRendererPtr->setFixedSize(VIDEO_WIDTH_ORIGIN, VIDEO_WIDTH_ORIGIN/ ASPECT_RATIO);
 
 		QHBoxLayout* layout = new QHBoxLayout();
 		layout->addWidget(_videoRendererPtr.get());
@@ -178,6 +215,9 @@ namespace SoLive::Page
 		auto& mediaMgr = SoLive::Util::MediaManager::instance();
 		connect(this, SIGNAL(currRoomChanged(const QString&)), &mediaMgr, SLOT(onCurrRoomChanged(const QString&)));
 		connect(&mediaMgr, SIGNAL(sendEvent(const Event&)), this, SLOT(onEvent(const Event&)));
+		
+		// 视频渲染组件槽函数连接
+		connect(this, SIGNAL(currRoomChanged(const QString&)), _videoRendererPtr.get(), SLOT(onCurrRoomChanged(const QString&)));
 	}
 
 	void LiveViewerPage::setCurrRoom(const QString& room)
@@ -267,6 +307,27 @@ namespace SoLive::Page
 				_audioTrack->set_enabled(!e.muted);
 			}
 			break;
+		case EventType::Volume:
+		{
+			auto signalingThread = SoLive::PeerConnection::PeerConnectionFactory::getInstance().signalingThread();
+			double vol = e.volume / 100;
+			signalingThread->PostTask([this,vol]()
+				{
+					auto audioTrack = dynamic_cast<webrtc::AudioTrackInterface*>(_audioTrack);
+					if (audioTrack)
+					{
+						auto source = audioTrack->GetSource();
+						source->SetVolume(vol);
+					}
+				});
+			break;
+		}
+		case EventType::Reconnect:
+		{
+			auto& liveClient=LiveClient::LiveClient::getInstance();
+			liveClient.reconnect();
+			break;
+		}
 		default:
 			break;
 		}

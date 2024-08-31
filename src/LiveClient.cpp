@@ -3,6 +3,7 @@
 #include "SocketClient.h"
 #include "LiveViewerPageDef.h"
 #include "MessageManager.h"
+#include "PeerConnectionFactory.h"
 
 namespace SoLive::LiveClient
 {
@@ -77,6 +78,9 @@ namespace SoLive::LiveClient
     LiveClient::LiveClient(QObject* parent)
         : QObject(parent)
     {
+        _pcOptionsPtr = std::make_unique<mediasoupclient::PeerConnection::Options>();
+        rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface> factory = SoLive::PeerConnection::PeerConnectionFactory::getInstance().getFactory();
+        _pcOptionsPtr->factory = factory.get();
         mediasoupclient::Initialize();
         setListener();
     }
@@ -123,7 +127,7 @@ namespace SoLive::LiveClient
 
     void LiveClient::setupDevice()
     {
-        _devicePtr = std::make_unique<mediasoupclient::Device>(mediasoupclient::Device());
+        _devicePtr = std::make_unique<mediasoupclient::Device>();
         _bDeviceLoaded = true;
     }
 
@@ -134,6 +138,23 @@ namespace SoLive::LiveClient
             _recvTransportPtr->Close();
             _bRecvTrpCreated = false;
         }
+    }
+
+    void LiveClient::subscribe()
+    {
+        auto& socketClient = SoLive::ProtocolSocketClient::SocketClient::getInstance();
+        auto jsonObj = std::make_unique<QJsonObject>();
+        (*jsonObj)["from"] = "qt_client";
+        socketClient.emit(SoLive::Page::EVENT_CREATE_CONS_TRP, std::move(jsonObj));
+    }
+
+
+    void LiveClient::getRtpCapabilities()
+    {
+        auto& socketClient = SoLive::ProtocolSocketClient::SocketClient::getInstance();
+        auto jsonObj = std::make_unique<QJsonObject>();
+        (*jsonObj)["from"] = "qt_client";
+        socketClient.emit(SoLive::Page::EVENT_GET_RTP_CAPA, std::move(jsonObj));
     }
 
     void LiveClient::consume()
@@ -149,6 +170,16 @@ namespace SoLive::LiveClient
         (*jsonObj)["data"] = strRtpCpas.c_str();
         socketClient.emit(SoLive::Page::EVENT_CONSUME, std::move(jsonObj));
         _cv.notify_all();
+    }
+
+    void LiveClient::reconnect()
+    {
+        if (!_oldRoom.isEmpty())
+        {
+            sigClearWidget();
+        }
+        init();
+        getRtpCapabilities();
     }
 
     void LiveClient::setListener()
@@ -188,9 +219,7 @@ namespace SoLive::LiveClient
                         sigClearWidget();
                     }
                     init();
-                    auto jsonObj = std::make_unique<QJsonObject>();
-                    (*jsonObj)["from"] = "qt_client";
-                    socketClient.emit(SoLive::Page::EVENT_GET_RTP_CAPA, std::move(jsonObj));
+                    getRtpCapabilities();
                 }
                 else if (std::holds_alternative<std::string>(event))
                 {
@@ -211,9 +240,7 @@ namespace SoLive::LiveClient
                         nlohmann::json jsonObject = nlohmann::json::parse(strJson);
                         _devicePtr->Load(jsonObject);
 
-                        auto jsonObj = std::make_unique<QJsonObject>();
-                        (*jsonObj)["from"] = "qt_client";
-                        socketClient.emit(SoLive::Page::EVENT_CREATE_CONS_TRP, std::move(jsonObj));
+                        subscribe();
                     }
                     else
                     {
@@ -252,7 +279,9 @@ namespace SoLive::LiveClient
                             strTrpId,
                             iceParameters,
                             iceCandidates,
-                            dtlsParameters);
+                            dtlsParameters,
+                            _pcOptionsPtr.get()
+                        );
                         _bRecvTrpCreated = true;
 
                         _recvTransportPtr = std::unique_ptr<mediasoupclient::RecvTransport>(recvTrp);

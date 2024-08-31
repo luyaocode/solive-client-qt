@@ -41,8 +41,10 @@ namespace SoLive::LiveClient
         void setupDevice();
         friend void RecvTrpListener::closeRecvTransport(LiveClient& liveClient);
         void closeRecvTransport();
+        void subscribe();
+        void getRtpCapabilities();
+        void reconnect();
         void consume();
-
         void addRemoteTrack(rtc::scoped_refptr<webrtc::MediaStreamTrackInterface> track);
 
     Q_SIGNALS:
@@ -65,6 +67,7 @@ namespace SoLive::LiveClient
         std::mutex _mtx;
         std::condition_variable _cv;
         std::unique_ptr<mediasoupclient::Device> _devicePtr;
+        std::unique_ptr<mediasoupclient::PeerConnection::Options> _pcOptionsPtr;
         std::unique_ptr<mediasoupclient::RecvTransport> _recvTransportPtr;
         std::vector<std::unique_ptr<mediasoupclient::Consumer>> _consumerVec;
         std::unique_ptr<RecvTrpListener> _recvTrpListenerPtr;

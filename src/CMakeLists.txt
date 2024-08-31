@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if (MSVC)
     add_compile_options(/utf-8)
+    add_compile_options(/Zm100)
 endif()
 if (MSVC)
     # WebRTC采用的是/MT，mediasoupclient也需要采用/MT
@@ -55,7 +56,7 @@ find_package(Qt5 REQUIRED COMPONENTS Core Widgets Gui Test)
 find_package(Qt5 COMPONENTS Multimedia MultimediaWidgets REQUIRED)
 
 # vcpkg安装包
-find_package(absl REQUIRED CONFIG)
+#find_package(absl REQUIRED CONFIG)
 # 使用vcpkg安装无法指定静态多线程运行时库和_ITERATOR_DEBUG_LEVEL，采用CMake编译静态库就好了
 find_package(spdlog REQUIRED CONFIG)
 
@@ -77,6 +78,7 @@ list(APPEND HEADERS_DIRECTORY
     ${CMAKE_SOURCE_DIR}/include/json-3.11.2
     ${CMAKE_SOURCE_DIR}/include/json-3.11.2/nlohmann
     ${CMAKE_SOURCE_DIR}/include/sio-client
+    ${CMAKE_SOURCE_DIR}/include/abseil-cpp
     "D:/repos/vcpkg/installed/x64-windows/include"
     "D:/repos/vcpkg/installed/x64-windows-static/include"
 )
@@ -173,17 +175,17 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${BOOST_LIBRARIES}
     ${QT_LIBS}
     ${WIN32_LIBS}
-    #sioclient
+    sioclient
     sioclient_tls
     OpenSSL::SSL
     OpenSSL::Crypto
     webrtc
     sdptransform
     mediasoupclient
+    absl_base absl_strings
 )
 # vcpkg包
 target_link_libraries(${PROJECT_NAME} PRIVATE 
-    absl::base absl::strings absl::optional
     spdlog::spdlog
 )
 

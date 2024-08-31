@@ -50,6 +50,8 @@ namespace SoLive::Util
         {
         case EventType::PlayStatus:
         case EventType::Muted:
+        case EventType::Volume:
+        case EventType::Reconnect:
             sendEvent(e);
             break;
         default:

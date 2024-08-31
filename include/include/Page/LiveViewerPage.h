@@ -28,23 +28,25 @@ namespace SoLive::Page
 		public SoLive::ProtocolSocketClient::ISocketClientObserver
 	{
 		Q_OBJECT
-		Q_PROPERTY(QString currRoom READ currRoom WRITE setCurrRoom NOTIFY currRoomChanged)
+			Q_PROPERTY(QString currRoom READ currRoom WRITE setCurrRoom NOTIFY currRoomChanged)
 
 
 	public:
 		explicit LiveViewerPage(QWidget* parent = nullptr);
 		virtual ~LiveViewerPage();
+		void hideUi();
+		void showUi();
 	Q_SIGNALS:
 		void enterRoom(const QString& newRoom, const QString& oldRoom);
-		void leaveRoom(const QString& roomId="");
+		void leaveRoom(const QString& roomId = "");
 		void currRoomChanged(const QString& room);
 
 	private:
 		Ui::LiveViewerPage* _ui;
 		QSharedPointer<SoLive::Ctrl::VideoRenderer> _videoRendererPtr;
 		QSharedPointer<SoLive::Ctrl::AudioPlayer> _audioPlayerPtr;
-		webrtc::MediaStreamTrackInterface* _audioTrack;
-		webrtc::MediaStreamTrackInterface* _videoTrack;
+		webrtc::MediaStreamTrackInterface* _audioTrack{nullptr};
+		webrtc::MediaStreamTrackInterface* _videoTrack{nullptr};
 		QString _currRoom;
 	private:
 		void setupUi();
@@ -52,6 +54,7 @@ namespace SoLive::Page
 		const QString currRoom() const { return _currRoom; }
 		void setCurrRoom(const QString& room = "");
 		void clearPlayer();
+		void setVisibleRecursively(QLayout* layout,bool show);
 	public Q_SLOTS:
 		void onVideoTrackReady(webrtc::VideoTrackInterface* videoTrack);
 		void onAudioTrackReady(webrtc::AudioTrackInterface* audioTrack);

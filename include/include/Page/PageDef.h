@@ -10,6 +10,8 @@ namespace SoLive::Page
 		LiveViewer,
 		Meet,
 	};
+	constexpr int			VIDEO_WIDTH_ORIGIN = 1600;
+	constexpr double		ASPECT_RATIO = 640.0 / 480;
 }
 
 #endif // PAGEDEF_H

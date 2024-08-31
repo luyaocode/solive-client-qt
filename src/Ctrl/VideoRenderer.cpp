@@ -3,6 +3,9 @@
 #include "VideoRenderer.h"
 #include "MediaManager.h"
 #include "MediaUtil.h"
+#include <QScreen>
+#include "PageDef.h"
+#include "LiveViewerPage.h"
 
 namespace SoLive::Ctrl
 {
@@ -28,15 +31,26 @@ namespace SoLive::Ctrl
         setupConnection();
     }
 
+    void VideoRenderer::setParent(QWidget* parent)
+    {
+        QWidget::setParent(parent);
+        _parent = parent;
+    }
+
     void VideoRenderer::setupUi()
     {
-        auto container = new QWidget(this);
-        _videoCtrlBar->setupUi(container);
+        _videoCtrContainer = new QWidget(this);
+        _videoCtrlBar->setupUi(_videoCtrContainer);
         auto mainLayout = new QVBoxLayout(this);
         mainLayout->addStretch();
-        mainLayout->addWidget(container);
+        mainLayout->addWidget(_videoCtrContainer);
         mainLayout->setContentsMargins(0,0,0,0);
         setLayout(mainLayout);
+        _videoCtrContainer->hide();
+        _videoCtrlBar->volume_slider->setTracking(false);
+        _videoCtrlBar->volume_slider->setValue(100);
+        _videoCtrlBar->volume_lab->setText(QString::number(100));
+        _videoCtrlBar->full_screen_btn->setText(tr("最大化"));
     }
 
     void VideoRenderer::clear()
@@ -78,6 +92,7 @@ namespace SoLive::Ctrl
         // 将视频帧转换为QImage
         int width = buffer->width();
         int height = buffer->height();
+        _ratio = width*1.0 / height;
         if (_isRecording)
         {
             auto& mediaMgr = SoLive::Util::MediaManager::instance();
@@ -149,6 +164,7 @@ namespace SoLive::Ctrl
         connect(&mediaMgr, SIGNAL(sendEvent(const Event&)), this, SLOT(onEvent(const Event&)));
 
         connect(this, SIGNAL(renderStatusChanged()), this, SLOT(onRenderStausChanged()));
+        connect(this, SIGNAL(screenSizeChanged()), this, SLOT(onScreenSizeChanged()));
         connect(_videoCtrlBar->play_pause_btn, &QPushButton::clicked, [this]()
             {
                 Event e;
@@ -164,6 +180,35 @@ namespace SoLive::Ctrl
                 sendEvent(e);
             });
 
+        connect(_videoCtrlBar->volume_slider, &QSlider::valueChanged, this, [this](int value)
+            {
+                _videoCtrlBar->volume_lab->setText(QString::number(value));
+                Event e;
+                e.type = EventType::Volume;
+                e.volume = double(value);
+                sendEvent(e);
+            });
+        connect(_videoCtrlBar->fresh_btn, &QPushButton::clicked, this, [this]()
+            {
+                Event e;
+                e.type = EventType::Reconnect;
+                sendEvent(e);
+            });
+        connect(_videoCtrlBar->full_screen_btn, &QPushButton::clicked, this, [this]()
+            {
+                auto newScreenSize=static_cast<ScreenSize>((static_cast<int>(screenSize())+1)%3);
+                setScreenSize(newScreenSize);
+            });
+    }
+
+    void VideoRenderer::setScreenSize(ScreenSize ssize)
+    {
+        if (screenSize()==ssize)
+        {
+            return;
+        }
+        _screenSize = ssize;
+        screenSizeChanged(); //SIGNAL
     }
 
     void VideoRenderer::addOverlay(const Overlay& overlay)
@@ -262,6 +307,64 @@ namespace SoLive::Ctrl
             _muted = e.muted;
             _videoCtrlBar->mute_btn->setText(_muted?tr("取消静音"):tr("静音"));
             break;
+        case EventType::Reconnect:
+            _muted = false;
+            _videoCtrlBar->mute_btn->setText(tr("静音"));
+        default:
+            break;
+        }
+    }
+
+    void VideoRenderer::onCurrRoomChanged(const QString& room)
+    {
+        if (room.isEmpty())
+        {
+            _videoCtrContainer->hide();
+        }
+        else
+        {
+            _videoCtrContainer->show();
+        }
+    }
+
+    void VideoRenderer::onScreenSizeChanged()
+    {
+        int width, height;
+        switch (screenSize())
+        {
+        case ScreenSize::Origin:
+        {
+            Page::LiveViewerPage* liveViewerPage = dynamic_cast<Page::LiveViewerPage*>(_parent);
+            liveViewerPage->showUi();
+            _videoCtrlBar->full_screen_btn->setText(tr("最大化"));
+            setFixedSize(Page::VIDEO_WIDTH_ORIGIN, Page::VIDEO_WIDTH_ORIGIN / _ratio);
+            update();
+            break;
+        }
+        case ScreenSize::Max:
+        {
+            _videoCtrlBar->full_screen_btn->setText(tr("全屏"));
+            parentWidget()->updateGeometry();
+            parentWidget()->adjustSize();
+            height = parentWidget()->height();
+            width = height * _ratio;
+            setFixedSize(width, height);
+            update();
+            break;
+        }
+        case ScreenSize::Full:
+        {
+            Page::LiveViewerPage* liveViewerPage = dynamic_cast<Page::LiveViewerPage*>(_parent);
+            liveViewerPage->hideUi();
+            _videoCtrlBar->full_screen_btn->setText(tr("原始"));
+            QScreen* screen = QApplication::primaryScreen();
+            QRect screenGeometry = screen->geometry();
+            height = screenGeometry.height() * 0.8;
+            width = height*_ratio;
+            setFixedSize(width, height);
+            update();
+            break;
+        }
         default:
             break;
         }

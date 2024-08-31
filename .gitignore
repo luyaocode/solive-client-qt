@@ -2,6 +2,9 @@
 include/libmediasoupclient/
 include/libwebrtc/
 include/json-3.11.2/
+include/sio-client/
+include/abseil-cpp/
+include/*.txt
 lib/
 out/
 logs/

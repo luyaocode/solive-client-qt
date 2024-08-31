@@ -46,17 +46,26 @@ namespace SoLive::Ctrl
             _image(image)
         {}
     };
+    enum class ScreenSize
+    {
+        Origin,
+        Max,
+        Full
+    };
 
     class VideoRenderer : public QWidget,
         public rtc::VideoSinkInterface<webrtc::VideoFrame>
     {
         Q_OBJECT
             Q_PROPERTY(bool isRendering READ isRendering WRITE setIsRendering NOTIFY renderStatusChanged)
+            Q_PROPERTY(ScreenSize screenSize READ screenSize WRITE setScreenSize NOTIFY screenSizeChanged)
+
 
     public:
         virtual ~VideoRenderer();
         VideoRenderer(QWidget* parent = nullptr);
         void init();
+        void setParent(QWidget* parent = nullptr);
         void clear();
         void start();
         inline bool isRendering() const { return _isRendering; }
@@ -68,6 +77,7 @@ namespace SoLive::Ctrl
         void sendVideoInfo(int width, int height, int bitRate=40000,int fps=30);
         void renderStatusChanged();
         void sendEvent(const Event& e);
+        void screenSizeChanged();
     protected:
         void paintEvent(QPaintEvent* event) override;
     private Q_SLOTS:
@@ -78,8 +88,14 @@ namespace SoLive::Ctrl
         void onStopRecord();
         void onRenderStausChanged();
         void onEvent(const Event& e);
+        void onCurrRoomChanged(const QString& room);
+        void onScreenSizeChanged();
     private:
-        Ui::VideoControlBar*    _videoCtrlBar;
+        Ui::VideoControlBar*    _videoCtrlBar{nullptr};
+        ScreenSize              _screenSize{ScreenSize::Origin};
+        double                  _ratio{1.0};
+        QWidget*                _parent{nullptr};
+        QWidget*                 _videoCtrContainer;
         QImage                  _current_image;
         QMutex                  _mutex;
         bool                    _clearRequested;
@@ -93,6 +109,8 @@ namespace SoLive::Ctrl
         void setupConnection();
         void drawFrame();
         void drawOverlay();
+        ScreenSize screenSize() const { return _screenSize; }
+        void setScreenSize(ScreenSize ssize);
     };
 }
 #endif // VIDEORENDERER_H

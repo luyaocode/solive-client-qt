@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <api/media_stream_interface.h>
+#include <absl/types/optional.h>
 #include "UtilDef.h"
 using namespace SoLive::Util;
 

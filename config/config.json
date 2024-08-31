@@ -1,10 +1,10 @@
 {
-    "prod": {
+    "dev": {
         "protocol": "ws",
         "host": "localhost",
         "port": 5000
     },
-    "dev": {
+    "prod": {
         "protocol": "wss",
         "host": "api.chaosgomoku.fun",
         "port": 443
